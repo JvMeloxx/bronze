@@ -13,8 +13,8 @@ import { Badge } from "@/components/ui/badge"
 
 export default function PlanosPage() {
     // URLs do checkout Kiwify
-    const KIWIFY_BASICO = "https://pay.kiwify.com.br/DFttJ76"
-    const KIWIFY_PROFISSIONAL = "https://pay.kiwify.com.br/g6KElm3"
+    const KIWIFY_BASICO = "https://pay.kiwify.com.br/eKc4uYx"
+    const KIWIFY_PROFISSIONAL = "https://pay.kiwify.com.br/8o7B65P"
 
     const planos = [
         {
