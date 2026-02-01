@@ -451,47 +451,24 @@ export default function ConfiguracoesPage() {
                         />
                     </div>
 
-                    {/* Valor e Porcentagem */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="sessionValue">Valor da Sessão (R$)</Label>
-                            <Input
-                                id="sessionValue"
-                                type="number"
-                                value={config.sessionBaseValue}
-                                onChange={(e) =>
-                                    setConfig({ ...config, sessionBaseValue: Number(e.target.value) })
-                                }
-                                placeholder="120"
-                                className="border-green-200 dark:border-green-800"
-                                disabled={!config.pixEnabled}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="signalPercent">Sinal (%)</Label>
-                            <Input
-                                id="signalPercent"
-                                type="number"
-                                value={config.signalPercentage}
-                                onChange={(e) =>
-                                    setConfig({ ...config, signalPercentage: Number(e.target.value) })
-                                }
-                                placeholder="50"
-                                className="border-green-200 dark:border-green-800"
-                                disabled={!config.pixEnabled}
-                            />
-                        </div>
+                    {/* Porcentagem do Sinal */}
+                    <div className="space-y-2">
+                        <Label htmlFor="signalPercent">Porcentagem do Sinal (%)</Label>
+                        <Input
+                            id="signalPercent"
+                            type="number"
+                            value={config.signalPercentage}
+                            onChange={(e) =>
+                                setConfig({ ...config, signalPercentage: Number(e.target.value) })
+                            }
+                            placeholder="50"
+                            className="border-green-200 dark:border-green-800"
+                            disabled={!config.pixEnabled}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            O valor do sinal será calculado com base no preço do serviço selecionado pelo cliente
+                        </p>
                     </div>
-
-                    {/* Preview do Valor */}
-                    {config.pixEnabled && (
-                        <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/30 text-center">
-                            <p className="text-sm text-muted-foreground">Valor do sinal a ser cobrado:</p>
-                            <p className="text-3xl font-bold text-green-600">
-                                R$ {((config.sessionBaseValue * config.signalPercentage) / 100).toFixed(2).replace(".", ",")}
-                            </p>
-                        </div>
-                    )}
 
                     {/* Política de Pagamento */}
                     <div className="space-y-2">
