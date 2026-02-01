@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true)
 
     const supabase = createClient()
-    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "oojoaovictoroo76@gmail.com"
 
     const isAdmin = user?.email === adminEmail
 
