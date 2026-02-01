@@ -128,10 +128,43 @@ export default function AgendarPage() {
         const servicoNome = servicos.find(s => s.id === selectedTipo)?.nome || selectedTipo
         const dataFormatada = formatDateBR(selectedDate)
 
-        // Salvar no localStorage para simular persistência
+        // ===== SALVAR CLIENTE =====
+        // Verificar se cliente já existe pelo telefone
+        const clientesStorage = localStorage.getItem("sunsync_clientes")
+        let clientes = clientesStorage ? JSON.parse(clientesStorage) : []
+
+        // Normalizar telefone para comparação (remover caracteres especiais)
+        const telefoneNormalizado = formData.telefone.replace(/\D/g, '')
+        let clienteExistente = clientes.find((c: { telefone: string }) =>
+            c.telefone.replace(/\D/g, '') === telefoneNormalizado
+        )
+
+        let clienteId: string
+
+        if (clienteExistente) {
+            // Cliente já existe - usar ID existente
+            clienteId = clienteExistente.id
+        } else {
+            // Criar novo cliente
+            const novoCliente = {
+                id: Date.now().toString(),
+                nome: formData.nome,
+                email: formData.email || "",
+                telefone: formData.telefone,
+                tipoPele: "media" as const, // Padrão
+                observacoes: formData.observacoes || "",
+                dataCadastro: new Date().toISOString().split("T")[0],
+                sessoesRestantes: 0
+            }
+            clientes.push(novoCliente)
+            localStorage.setItem("sunsync_clientes", JSON.stringify(clientes))
+            clienteId = novoCliente.id
+        }
+
+        // ===== SALVAR AGENDAMENTO =====
         const agendamento = {
             id: Date.now().toString(),
-            clienteId: "public-" + Date.now(),
+            clienteId: clienteId,
             clienteNome: formData.nome,
             telefone: formData.telefone,
             email: formData.email,
@@ -144,7 +177,7 @@ export default function AgendarPage() {
             fonte: "website"
         }
 
-        // Salvar no localStorage (ou enviar para API)
+        // Salvar no localStorage
         const existingData = localStorage.getItem("sunsync_agendamentos")
         const agendamentos = existingData ? JSON.parse(existingData) : []
         agendamentos.push(agendamento)
