@@ -38,8 +38,7 @@ interface StudioConfig {
     signalPercentage: number
     sessionBaseValue: number
     paymentPolicy: string
-    // PRO Config
-    driveArtesLink: string
+
 }
 
 const defaultPaymentPolicy = `IMPORTANTE: Para confirmar o seu atendimento, é necessário realizar o pagamento de 50% do valor como sinal no ato do agendamento.
@@ -66,8 +65,7 @@ const defaultConfig: StudioConfig = {
     signalPercentage: 50,
     sessionBaseValue: 120,
     paymentPolicy: defaultPaymentPolicy,
-    // PRO Config
-    driveArtesLink: "",
+
 }
 
 export default function ConfiguracoesPage() {
@@ -505,81 +503,7 @@ export default function ConfiguracoesPage() {
                 </CardContent>
             </Card>
 
-            {/* Card Plano Profissional */}
-            <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <span className="text-2xl">✨</span>
-                        Configurações do Plano Profissional
-                        <span className="text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-0.5 rounded-full">
-                            PRO
-                        </span>
-                    </CardTitle>
-                    <CardDescription>
-                        Configure recursos exclusivos do plano profissional
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {/* Nome do Estúdio */}
-                    <div className="space-y-2">
-                        <Label htmlFor="nomeEstudio">Nome do Estúdio</Label>
-                        <Input
-                            id="nomeEstudio"
-                            value={config.nomeEstudio}
-                            onChange={(e) =>
-                                setConfig({ ...config, nomeEstudio: e.target.value })
-                            }
-                            placeholder="Ex: Studio Bronze & Glow"
-                            className="border-purple-200 dark:border-purple-800"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Usado para personalizar mensagens e a página de artes
-                        </p>
-                    </div>
 
-                    {/* Link do Drive de Artes */}
-                    <div className="space-y-2">
-                        <Label htmlFor="driveArtesLink">Link do Google Drive de Artes</Label>
-                        <Input
-                            id="driveArtesLink"
-                            value={config.driveArtesLink}
-                            onChange={(e) =>
-                                setConfig({ ...config, driveArtesLink: e.target.value })
-                            }
-                            placeholder="https://drive.google.com/drive/folders/..."
-                            className="border-purple-200 dark:border-purple-800"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Cole aqui o link da pasta do Google Drive com as artes do cliente.
-                            Quando configurado, a aba &quot;Artes&quot; aparecerá no menu.
-                        </p>
-                    </div>
-
-                    {/* Status */}
-                    {config.driveArtesLink && (
-                        <div className="p-4 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center gap-3">
-                            <span className="text-2xl">✅</span>
-                            <div>
-                                <p className="font-medium text-purple-700 dark:text-purple-300">
-                                    Plano Profissional Ativo
-                                </p>
-                                <p className="text-sm text-purple-600 dark:text-purple-400">
-                                    A aba &quot;Artes&quot; está disponível no menu lateral
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Botão Salvar */}
-                    <Button
-                        size="lg"
-                        onClick={handleSave}
-                        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                    >
-                        💾 Salvar Configurações PRO
-                    </Button>
-                </CardContent>
-            </Card>
 
             {/* Preview de Mensagens */}
             <Card className="border-amber-200 dark:border-amber-800">
