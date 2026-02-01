@@ -10,54 +10,20 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useAgendamentos, useClientes, usePacotes } from "@/lib/hooks"
-import { getStatusColor, getTipoLabel, formatarMoeda } from "@/lib/data"
+import { useDashboardStatsDB, useServicosDB } from "@/lib/hooks-supabase"
+import { getStatusColor, formatarMoeda } from "@/lib/data"
 
 export default function DashboardPage() {
-    const { agendamentos, isLoading: loadingAgendamentos } = useAgendamentos()
-    const { clientes, isLoading: loadingClientes } = useClientes()
-    const { pacotes, isLoading: loadingPacotes } = usePacotes()
+    const {
+        agendamentosHoje,
+        clientesAtivos,
+        sessoesEstaSemana,
+        faturamentoMensal,
+        totalClientes,
+        proximosAgendamentos
+    } = useDashboardStatsDB()
 
-    // Estatísticas
-    const hoje = new Date().toISOString().split("T")[0]
-    const agendamentosHoje = agendamentos.filter(a => a.data === hoje)
-    const clientesAtivos = clientes.filter(c => c.sessoesRestantes && c.sessoesRestantes > 0)
-
-    // Sessões esta semana
-    const inicioSemana = new Date()
-    inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay())
-    const fimSemana = new Date(inicioSemana)
-    fimSemana.setDate(fimSemana.getDate() + 6)
-
-    const sessoesEstaSemana = agendamentos.filter(a => {
-        const dataAgendamento = new Date(a.data + "T00:00:00")
-        return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana
-    })
-
-    // Faturamento (média de R$70 por sessão realizada)
-    const primeiroDiaMes = new Date()
-    primeiroDiaMes.setDate(1)
-    const primeiroDiaMesStr = primeiroDiaMes.toISOString().split("T")[0]
-
-    const sessoesRealizadasMes = agendamentos.filter(
-        a => a.data >= primeiroDiaMesStr && a.status === "realizado"
-    ).length
-    const faturamentoMensal = sessoesRealizadasMes * 70 + 8450 // Base + realizadas
-
-    const isLoading = loadingAgendamentos || loadingClientes || loadingPacotes
-
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4 animate-pulse">
-                        <span className="text-white text-xl">☀️</span>
-                    </div>
-                    <p className="text-muted-foreground">Carregando...</p>
-                </div>
-            </div>
-        )
-    }
+    const { servicos } = useServicosDB()
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -77,12 +43,12 @@ export default function DashboardPage() {
                             <span>📅</span> Agendamentos Hoje
                         </CardDescription>
                         <CardTitle className="text-3xl font-bold text-amber-600">
-                            {agendamentosHoje.length}
+                            {agendamentosHoje}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-sm text-muted-foreground">
-                            {agendamentosHoje.filter(a => a.status === "confirmado").length} confirmados
+                            {proximosAgendamentos.filter(a => a.status === "confirmado").length} confirmados
                         </p>
                     </CardContent>
                 </Card>
@@ -93,12 +59,12 @@ export default function DashboardPage() {
                             <span>👥</span> Clientes Ativos
                         </CardDescription>
                         <CardTitle className="text-3xl font-bold text-orange-600">
-                            {clientesAtivos.length}
+                            {clientesAtivos}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <p className="text-sm text-muted-foreground">
-                            {clientes.length} total cadastrados
+                            {totalClientes} total cadastrados
                         </p>
                     </CardContent>
                 </Card>
@@ -109,7 +75,7 @@ export default function DashboardPage() {
                             <span>🌟</span> Sessões Semana
                         </CardDescription>
                         <CardTitle className="text-3xl font-bold text-yellow-600">
-                            {sessoesEstaSemana.length}
+                            {sessoesEstaSemana}
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -127,7 +93,7 @@ export default function DashboardPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <p className="text-sm text-muted-foreground">+18% vs mês anterior</p>
+                        <p className="text-sm text-muted-foreground">Mês atual</p>
                     </CardContent>
                 </Card>
             </div>
@@ -204,7 +170,7 @@ export default function DashboardPage() {
                 </div>
                 <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
                     <CardContent className="p-0">
-                        {agendamentosHoje.length === 0 ? (
+                        {proximosAgendamentos.length === 0 ? (
                             <div className="p-8 text-center text-muted-foreground">
                                 <span className="text-4xl mb-4 block">📅</span>
                                 <p>Nenhum agendamento para hoje</p>
@@ -216,7 +182,7 @@ export default function DashboardPage() {
                             </div>
                         ) : (
                             <div className="divide-y divide-amber-100 dark:divide-amber-900">
-                                {agendamentosHoje
+                                {proximosAgendamentos
                                     .sort((a, b) => a.horario.localeCompare(b.horario))
                                     .map((appointment) => (
                                         <div key={appointment.id} className="flex items-center justify-between p-4 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 transition-colors">
@@ -225,9 +191,9 @@ export default function DashboardPage() {
                                                     {appointment.horario}
                                                 </span>
                                                 <div>
-                                                    <p className="font-medium">{appointment.clienteNome}</p>
+                                                    <p className="font-medium">{appointment.cliente_nome}</p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        {getTipoLabel(appointment.tipo)}
+                                                        {appointment.servico_nome}
                                                     </p>
                                                 </div>
                                             </div>
@@ -245,7 +211,7 @@ export default function DashboardPage() {
             {/* Pacotes Populares */}
             <div>
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold">Pacotes Disponíveis</h2>
+                    <h2 className="text-xl font-bold">Serviços Disponíveis</h2>
                     <Link href="/dashboard/pacotes">
                         <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700">
                             Gerenciar →
@@ -253,29 +219,34 @@ export default function DashboardPage() {
                     </Link>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {pacotes.filter(p => p.ativo).slice(0, 4).map((pacote) => (
-                        <Card key={pacote.id} className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-md transition-shadow">
+                    {servicos.filter(s => s.ativo).slice(0, 4).map((servico) => (
+                        <Card key={servico.id} className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-md transition-shadow">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-lg">{pacote.nome}</CardTitle>
+                                <CardTitle className="text-lg">{servico.nome}</CardTitle>
                                 <CardDescription className="line-clamp-2">
-                                    {pacote.descricao}
+                                    {servico.descricao}
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-end justify-between">
                                     <div>
                                         <p className="text-2xl font-bold text-amber-600">
-                                            {formatarMoeda(pacote.preco)}
+                                            {formatarMoeda(servico.preco)}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                            {pacote.sessoes} sessões
+                                            {servico.duracao} min
                                         </p>
                                     </div>
-                                    <Badge variant="amber">{pacote.tipo}</Badge>
+                                    <Badge variant="amber">Serviço</Badge>
                                 </div>
                             </CardContent>
                         </Card>
                     ))}
+                    {servicos.length === 0 && (
+                        <div className="col-span-full text-center py-8 text-muted-foreground bg-white/50 dark:bg-zinc-900/50 rounded-lg border border-dashed border-amber-200">
+                            Nenhum serviço cadastrado
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
