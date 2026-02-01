@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/lib/auth-context"
 
 interface NavItem {
     label: string
@@ -25,21 +26,24 @@ const baseNavItems: NavItem[] = [
 
 export function Sidebar() {
     const pathname = usePathname()
-    const [driveLink, setDriveLink] = useState<string | null>(null)
+    const { studio } = useAuth()
+    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
-        const savedConfig = localStorage.getItem("sunsync_config")
-        if (savedConfig) {
-            const config = JSON.parse(savedConfig)
-            setDriveLink(config.driveArtesLink || null)
-        }
+        setMounted(true)
     }, [])
 
-    // Filtra a aba Artes se não tiver link configurado
+    // Usar dados do banco (studio) ou fallback para localStorage para compatibilidade
+    const driveLink = studio?.drive_artes_link || null
+    const isPro = studio?.plano === "profissional" || !!driveLink
+
+    // Filtra a aba Artes se não tiver acesso PRO
     const navItems = baseNavItems.filter(item => {
-        if (item.isPro && !driveLink) return false
+        if (item.isPro && !isPro) return false
         return true
     })
+
+    if (!mounted) return null
 
     return (
         <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-30">
@@ -52,7 +56,7 @@ export function Sidebar() {
                     <span className="ml-2 text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
                         SunSync
                     </span>
-                    {driveLink && (
+                    {isPro && (
                         <span className="ml-2 text-[10px] bg-gradient-to-r from-purple-500 to-pink-500 text-white px-1.5 py-0.5 rounded-full font-medium">
                             PRO
                         </span>
@@ -103,20 +107,21 @@ export function Sidebar() {
 // Mobile navigation
 export function MobileNav() {
     const pathname = usePathname()
-    const [driveLink, setDriveLink] = useState<string | null>(null)
+    const { studio } = useAuth()
+    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
-        const savedConfig = localStorage.getItem("sunsync_config")
-        if (savedConfig) {
-            const config = JSON.parse(savedConfig)
-            setDriveLink(config.driveArtesLink || null)
-        }
+        setMounted(true)
     }, [])
 
+    const isPro = studio?.plano === "profissional" || !!studio?.drive_artes_link
+
     const navItems = baseNavItems.filter(item => {
-        if (item.isPro && !driveLink) return false
+        if (item.isPro && !isPro) return false
         return true
     }).slice(0, 5)
+
+    if (!mounted) return null
 
     return (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-amber-200 dark:border-amber-800 z-50">

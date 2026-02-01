@@ -6,20 +6,21 @@ import { useAuth } from "@/lib/auth-context"
 import { Sidebar, MobileNav } from "@/components/Sidebar"
 import { Button } from "@/components/ui/button"
 import { ToastProvider } from "@/components/ui/toast"
+import { Badge } from "@/components/ui/badge"
 
 export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode
 }) {
-    const { user, isAuthenticated, isLoading, logout } = useAuth()
+    const { user, studio, isLoading, signOut } = useAuth()
     const router = useRouter()
 
     useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
+        if (!isLoading && !user) {
             router.push("/login")
         }
-    }, [isAuthenticated, isLoading, router])
+    }, [user, isLoading, router])
 
     if (isLoading) {
         return (
@@ -34,12 +35,12 @@ export default function DashboardLayout({
         )
     }
 
-    if (!isAuthenticated) {
+    if (!user) {
         return null
     }
 
-    const handleLogout = () => {
-        logout()
+    const handleLogout = async () => {
+        await signOut()
         router.push("/")
     }
 
@@ -61,6 +62,11 @@ export default function DashboardLayout({
                                 <span className="font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
                                     SunSync
                                 </span>
+                                {studio?.plano === "profissional" && (
+                                    <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px]">
+                                        PRO
+                                    </Badge>
+                                )}
                             </div>
 
                             {/* Spacer for desktop */}
@@ -69,7 +75,9 @@ export default function DashboardLayout({
                             {/* User section */}
                             <div className="flex items-center gap-4">
                                 <span className="text-sm text-muted-foreground hidden sm:block">
-                                    Olá, <span className="font-medium text-foreground">{user?.name}</span>
+                                    Olá, <span className="font-medium text-foreground">
+                                        {studio?.nome_estudio || user?.email?.split("@")[0] || "Usuário"}
+                                    </span>
                                 </span>
                                 <Button
                                     variant="outline"

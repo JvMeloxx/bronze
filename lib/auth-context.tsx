@@ -1,94 +1,149 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useEffect, useState, ReactNode } from "react"
+import { createClient } from "@/lib/supabase"
+import { User, Session } from "@supabase/supabase-js"
 
-interface User {
+interface Studio {
     id: string
-    name: string
     email: string
-    role: "admin" | "user"
+    nome_estudio: string
+    telefone: string
+    plano: "basico" | "profissional"
+    ativo: boolean
+    drive_artes_link: string
+    pix_enabled: boolean
+    pix_key: string
+    pix_key_type: string
+    establishment_name: string
+    signal_percentage: number
+    payment_policy: string
+    notifications_enabled: boolean
+    owner_phone: string
 }
 
 interface AuthContextType {
     user: User | null
+    session: Session | null
+    studio: Studio | null
     isLoading: boolean
-    login: (email: string, password: string) => Promise<boolean>
-    logout: () => void
-    isAuthenticated: boolean
+    isAdmin: boolean
+    signIn: (email: string, password: string) => Promise<{ error: Error | null }>
+    signUp: (email: string, password: string) => Promise<{ error: Error | null }>
+    signOut: () => Promise<void>
+    refreshStudio: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Demo users for testing
-const DEMO_USERS = [
-    {
-        id: "1",
-        name: "Admin SunSync",
-        email: "admin@sunsync.com",
-        password: "admin123",
-        role: "admin" as const
-    },
-    {
-        id: "2",
-        name: "João Victor",
-        email: "joao@sunsync.com",
-        password: "123456",
-        role: "user" as const
-    }
-]
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
+    const [session, setSession] = useState<Session | null>(null)
+    const [studio, setStudio] = useState<Studio | null>(null)
     const [isLoading, setIsLoading] = useState(true)
 
-    useEffect(() => {
-        // Check for stored session
-        const storedUser = localStorage.getItem("sunsync_user")
-        if (storedUser) {
-            try {
-                setUser(JSON.parse(storedUser))
-            } catch {
-                localStorage.removeItem("sunsync_user")
-            }
+    const supabase = createClient()
+    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL
+
+    const isAdmin = user?.email === adminEmail
+
+    // Buscar dados do studio
+    const fetchStudio = async (userId: string) => {
+        const { data, error } = await supabase
+            .from("studios")
+            .select("*")
+            .eq("user_id", userId)
+            .single()
+
+        if (error) {
+            console.error("Erro ao buscar studio:", error)
+            return null
         }
-        setIsLoading(false)
-    }, [])
-
-    const login = async (email: string, password: string): Promise<boolean> => {
-        setIsLoading(true)
-
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800))
-
-        const foundUser = DEMO_USERS.find(
-            u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-        )
-
-        if (foundUser) {
-            const { password: _, ...userWithoutPassword } = foundUser
-            setUser(userWithoutPassword)
-            localStorage.setItem("sunsync_user", JSON.stringify(userWithoutPassword))
-            setIsLoading(false)
-            return true
-        }
-
-        setIsLoading(false)
-        return false
+        return data as Studio
     }
 
-    const logout = () => {
+    const refreshStudio = async () => {
+        if (user) {
+            const studioData = await fetchStudio(user.id)
+            setStudio(studioData)
+        }
+    }
+
+    useEffect(() => {
+        // Verificar sessão atual
+        const initAuth = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            setSession(session)
+            setUser(session?.user ?? null)
+
+            if (session?.user) {
+                const studioData = await fetchStudio(session.user.id)
+                setStudio(studioData)
+            }
+
+            setIsLoading(false)
+        }
+
+        initAuth()
+
+        // Listener para mudanças de auth
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+                setSession(session)
+                setUser(session?.user ?? null)
+
+                if (session?.user) {
+                    const studioData = await fetchStudio(session.user.id)
+                    setStudio(studioData)
+                } else {
+                    setStudio(null)
+                }
+            }
+        )
+
+        return () => {
+            subscription.unsubscribe()
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+
+    const signIn = async (email: string, password: string) => {
+        const { error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        })
+        return { error }
+    }
+
+    const signUp = async (email: string, password: string) => {
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+        })
+        return { error }
+    }
+
+    const signOut = async () => {
+        await supabase.auth.signOut()
         setUser(null)
-        localStorage.removeItem("sunsync_user")
+        setSession(null)
+        setStudio(null)
     }
 
     return (
-        <AuthContext.Provider value={{
-            user,
-            isLoading,
-            login,
-            logout,
-            isAuthenticated: !!user
-        }}>
+        <AuthContext.Provider
+            value={{
+                user,
+                session,
+                studio,
+                isLoading,
+                isAdmin,
+                signIn,
+                signUp,
+                signOut,
+                refreshStudio,
+            }}
+        >
             {children}
         </AuthContext.Provider>
     )
