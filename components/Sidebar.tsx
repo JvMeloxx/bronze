@@ -14,7 +14,7 @@ const navItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: "📊" },
     { label: "Agendamentos", href: "/dashboard/agendamentos", icon: "📅" },
     { label: "Clientes", href: "/dashboard/clientes", icon: "👥" },
-    { label: "Pacotes", href: "/dashboard/pacotes", icon: "📦" },
+    { label: "Serviços", href: "/dashboard/pacotes", icon: "💆" },
     { label: "Relatórios", href: "/dashboard/relatorios", icon: "📈" },
     { label: "Configurações", href: "/dashboard/configuracoes", icon: "⚙️" },
 ]

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -21,54 +21,80 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { usePacotes } from "@/lib/hooks"
 import { useToast } from "@/components/ui/toast"
-import { Pacote, formatarMoeda } from "@/lib/data"
 
-export default function PacotesPage() {
-    const { pacotes, addPacote, updatePacote, deletePacote, isLoading } = usePacotes()
+// Interface para serviços
+interface Servico {
+    id: string
+    nome: string
+    descricao: string
+    preco: number
+    duracao: string
+    ativo: boolean
+}
+
+const STORAGE_KEY = "sunsync_servicos"
+
+export default function ServicosPage() {
     const { addToast } = useToast()
-
+    const [servicos, setServicos] = useState<Servico[]>([])
+    const [isLoading, setIsLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
-    const [editingPacote, setEditingPacote] = useState<Pacote | null>(null)
+    const [editingServico, setEditingServico] = useState<Servico | null>(null)
 
     // Form state
     const [formData, setFormData] = useState({
         nome: "",
         descricao: "",
-        sessoes: 10,
         preco: 0,
-        validadeDias: 90,
-        tipo: "" as Pacote["tipo"] | "",
+        duracao: "30 min",
         ativo: true
     })
+
+    // Carregar serviços do localStorage
+    useEffect(() => {
+        const saved = localStorage.getItem(STORAGE_KEY)
+        if (saved) {
+            setServicos(JSON.parse(saved))
+        } else {
+            // Serviços padrão
+            const defaultServicos: Servico[] = [
+                { id: "1", nome: "Bronzeamento Natural", descricao: "Bronze natural com o sol", preco: 60, duracao: "30-45 min", ativo: true },
+                { id: "2", nome: "Bronze na Cabine", descricao: "Bronze rápido na cabine de bronzeamento", preco: 80, duracao: "20-30 min", ativo: true },
+            ]
+            setServicos(defaultServicos)
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultServicos))
+        }
+        setIsLoading(false)
+    }, [])
+
+    // Salvar no localStorage sempre que mudar
+    const saveServicos = (newServicos: Servico[]) => {
+        setServicos(newServicos)
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(newServicos))
+    }
 
     const resetForm = () => {
         setFormData({
             nome: "",
             descricao: "",
-            sessoes: 10,
             preco: 0,
-            validadeDias: 90,
-            tipo: "",
+            duracao: "30 min",
             ativo: true
         })
-        setEditingPacote(null)
+        setEditingServico(null)
     }
 
-    const handleOpenDialog = (pacote?: Pacote) => {
-        if (pacote) {
-            setEditingPacote(pacote)
+    const handleOpenDialog = (servico?: Servico) => {
+        if (servico) {
+            setEditingServico(servico)
             setFormData({
-                nome: pacote.nome,
-                descricao: pacote.descricao,
-                sessoes: pacote.sessoes,
-                preco: pacote.preco,
-                validadeDias: pacote.validadeDias,
-                tipo: pacote.tipo,
-                ativo: pacote.ativo
+                nome: servico.nome,
+                descricao: servico.descricao,
+                preco: servico.preco,
+                duracao: servico.duracao,
+                ativo: servico.ativo
             })
         } else {
             resetForm()
@@ -77,45 +103,46 @@ export default function PacotesPage() {
     }
 
     const handleSubmit = () => {
-        if (!formData.nome || !formData.tipo || formData.preco <= 0) {
-            addToast({ title: "Erro", description: "Preencha todos os campos obrigatórios", variant: "destructive" })
+        if (!formData.nome || formData.preco <= 0) {
+            addToast({ title: "Erro", description: "Preencha nome e preço", variant: "destructive" })
             return
         }
 
-        if (editingPacote) {
-            updatePacote(editingPacote.id, formData as Pacote)
-            addToast({ title: "Sucesso!", description: "Pacote atualizado", variant: "success" })
+        if (editingServico) {
+            // Atualizar
+            const updated = servicos.map(s =>
+                s.id === editingServico.id ? { ...s, ...formData } : s
+            )
+            saveServicos(updated)
+            addToast({ title: "Sucesso!", description: "Serviço atualizado", variant: "success" })
         } else {
-            addPacote(formData as Omit<Pacote, "id">)
-            addToast({ title: "Sucesso!", description: "Pacote criado", variant: "success" })
+            // Criar novo
+            const newServico: Servico = {
+                id: Date.now().toString(),
+                ...formData
+            }
+            saveServicos([...servicos, newServico])
+            addToast({ title: "Sucesso!", description: "Serviço criado", variant: "success" })
         }
 
         setIsDialogOpen(false)
         resetForm()
     }
 
-    const handleToggleAtivo = (id: string, ativo: boolean) => {
-        updatePacote(id, { ativo: !ativo })
-        addToast({
-            title: ativo ? "Pacote desativado" : "Pacote ativado",
-            description: ativo ? "O pacote não será mais exibido" : "O pacote está disponível novamente"
-        })
+    const handleToggleAtivo = (id: string) => {
+        const updated = servicos.map(s =>
+            s.id === id ? { ...s, ativo: !s.ativo } : s
+        )
+        saveServicos(updated)
+        addToast({ title: "Status alterado" })
     }
 
     const handleDelete = (id: string) => {
-        if (confirm("Tem certeza que deseja excluir este pacote?")) {
-            deletePacote(id)
-            addToast({ title: "Pacote excluído" })
+        if (confirm("Tem certeza que deseja excluir este serviço?")) {
+            const updated = servicos.filter(s => s.id !== id)
+            saveServicos(updated)
+            addToast({ title: "Serviço excluído" })
         }
-    }
-
-    const getTipoColor = (tipo: Pacote["tipo"]) => {
-        const colors = {
-            natural: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-            spray: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-            misto: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400"
-        }
-        return colors[tipo]
     }
 
     if (isLoading) {
@@ -123,9 +150,9 @@ export default function PacotesPage() {
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
                     <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4 animate-pulse">
-                        <span className="text-white text-xl">📦</span>
+                        <span className="text-white text-xl">💆</span>
                     </div>
-                    <p className="text-muted-foreground">Carregando pacotes...</p>
+                    <p className="text-muted-foreground">Carregando serviços...</p>
                 </div>
             </div>
         )
@@ -136,9 +163,9 @@ export default function PacotesPage() {
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold">Pacotes</h1>
+                    <h1 className="text-3xl font-bold">Serviços</h1>
                     <p className="text-muted-foreground">
-                        Gerencie os pacotes e planos do seu studio
+                        Gerencie os serviços oferecidos pelo seu studio
                     </p>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -147,26 +174,26 @@ export default function PacotesPage() {
                             onClick={() => handleOpenDialog()}
                             className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
                         >
-                            + Novo Pacote
+                            + Novo Serviço
                         </Button>
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
                             <DialogTitle>
-                                {editingPacote ? "Editar Pacote" : "Novo Pacote"}
+                                {editingServico ? "Editar Serviço" : "Novo Serviço"}
                             </DialogTitle>
                             <DialogDescription>
-                                Configure os detalhes do pacote
+                                Configure os detalhes do serviço
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
-                                <Label htmlFor="nome">Nome do Pacote *</Label>
+                                <Label htmlFor="nome">Nome do Serviço *</Label>
                                 <Input
                                     id="nome"
                                     value={formData.nome}
                                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                                    placeholder="Ex: Pacote Bronze"
+                                    placeholder="Ex: Bronzeamento Natural"
                                     className="border-amber-200 dark:border-amber-800"
                                 />
                             </div>
@@ -176,22 +203,11 @@ export default function PacotesPage() {
                                     id="descricao"
                                     value={formData.descricao}
                                     onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
-                                    placeholder="Descrição do pacote..."
+                                    placeholder="Descrição do serviço..."
                                     className="border-amber-200 dark:border-amber-800"
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="sessoes">Nº de Sessões *</Label>
-                                    <Input
-                                        id="sessoes"
-                                        type="number"
-                                        min="1"
-                                        value={formData.sessoes}
-                                        onChange={(e) => setFormData({ ...formData, sessoes: parseInt(e.target.value) || 1 })}
-                                        className="border-amber-200 dark:border-amber-800"
-                                    />
-                                </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="preco">Preço (R$) *</Label>
                                     <Input
@@ -204,29 +220,13 @@ export default function PacotesPage() {
                                         className="border-amber-200 dark:border-amber-800"
                                     />
                                 </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label>Tipo de Serviço *</Label>
-                                    <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v as Pacote["tipo"] })}>
-                                        <SelectTrigger className="border-amber-200 dark:border-amber-800">
-                                            <SelectValue placeholder="Selecione" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="natural">Natural</SelectItem>
-                                            <SelectItem value="spray">Spray</SelectItem>
-                                            <SelectItem value="misto">Misto</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="validade">Validade (dias)</Label>
+                                    <Label htmlFor="duracao">Duração</Label>
                                     <Input
-                                        id="validade"
-                                        type="number"
-                                        min="1"
-                                        value={formData.validadeDias}
-                                        onChange={(e) => setFormData({ ...formData, validadeDias: parseInt(e.target.value) || 30 })}
+                                        id="duracao"
+                                        value={formData.duracao}
+                                        onChange={(e) => setFormData({ ...formData, duracao: e.target.value })}
+                                        placeholder="Ex: 30-45 min"
                                         className="border-amber-200 dark:border-amber-800"
                                     />
                                 </div>
@@ -240,73 +240,62 @@ export default function PacotesPage() {
                                 onClick={handleSubmit}
                                 className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
                             >
-                                {editingPacote ? "Salvar" : "Criar Pacote"}
+                                {editingServico ? "Salvar" : "Criar Serviço"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
             </div>
 
-            {/* Pacotes Grid */}
-            {pacotes.length === 0 ? (
+            {/* Serviços Grid */}
+            {servicos.length === 0 ? (
                 <Card className="border-amber-200 dark:border-amber-800">
                     <CardContent className="p-12 text-center">
-                        <span className="text-6xl block mb-4">📦</span>
-                        <h3 className="text-xl font-semibold mb-2">Nenhum pacote cadastrado</h3>
+                        <span className="text-6xl block mb-4">💆</span>
+                        <h3 className="text-xl font-semibold mb-2">Nenhum serviço cadastrado</h3>
                         <p className="text-muted-foreground mb-4">
-                            Crie seu primeiro pacote de bronzeamento
+                            Crie seu primeiro serviço de bronzeamento
                         </p>
                         <Button
                             onClick={() => handleOpenDialog()}
                             className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
                         >
-                            + Novo Pacote
+                            + Novo Serviço
                         </Button>
                     </CardContent>
                 </Card>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {pacotes.map((pacote) => (
+                    {servicos.map((servico) => (
                         <Card
-                            key={pacote.id}
-                            className={`border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 ${!pacote.ativo && "opacity-60"}`}
+                            key={servico.id}
+                            className={`border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 ${!servico.ativo && "opacity-60"}`}
                         >
                             <CardHeader className="pb-2">
                                 <div className="flex items-start justify-between">
                                     <div className="space-y-1">
                                         <CardTitle className="text-xl flex items-center gap-2">
-                                            {pacote.nome}
-                                            {!pacote.ativo && (
+                                            {servico.nome}
+                                            {!servico.ativo && (
                                                 <Badge variant="secondary" className="text-xs">Inativo</Badge>
                                             )}
                                         </CardTitle>
                                         <CardDescription className="line-clamp-2">
-                                            {pacote.descricao}
+                                            {servico.descricao}
                                         </CardDescription>
                                     </div>
-                                    <Badge className={getTipoColor(pacote.tipo)}>{pacote.tipo}</Badge>
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="flex items-end justify-between">
                                     <div>
                                         <p className="text-3xl font-bold text-amber-600">
-                                            {formatarMoeda(pacote.preco)}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                            {(pacote.preco / pacote.sessoes).toFixed(2)} por sessão
+                                            R$ {servico.preco.toFixed(2).replace('.', ',')}
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-2xl font-bold">{pacote.sessoes}</p>
-                                        <p className="text-sm text-muted-foreground">sessões</p>
+                                        <p className="text-sm text-muted-foreground">⏱️ {servico.duracao}</p>
                                     </div>
-                                </div>
-
-                                <div className="pt-2 border-t border-amber-100 dark:border-amber-900">
-                                    <p className="text-sm text-muted-foreground">
-                                        ⏱️ Validade: {pacote.validadeDias} dias
-                                    </p>
                                 </div>
 
                                 <div className="flex gap-2">
@@ -314,21 +303,21 @@ export default function PacotesPage() {
                                         variant="outline"
                                         size="sm"
                                         className="flex-1"
-                                        onClick={() => handleToggleAtivo(pacote.id, pacote.ativo)}
+                                        onClick={() => handleToggleAtivo(servico.id)}
                                     >
-                                        {pacote.ativo ? "Desativar" : "Ativar"}
+                                        {servico.ativo ? "Desativar" : "Ativar"}
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => handleOpenDialog(pacote)}
+                                        onClick={() => handleOpenDialog(servico)}
                                     >
                                         ✏️
                                     </Button>
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => handleDelete(pacote.id)}
+                                        onClick={() => handleDelete(servico.id)}
                                         className="hover:text-red-600"
                                     >
                                         🗑️
@@ -341,17 +330,17 @@ export default function PacotesPage() {
             )}
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4">
                 <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-500/10 to-orange-500/10">
                     <CardContent className="p-4 text-center">
-                        <p className="text-3xl font-bold text-amber-600">{pacotes.length}</p>
-                        <p className="text-sm text-muted-foreground">Total de Pacotes</p>
+                        <p className="text-3xl font-bold text-amber-600">{servicos.length}</p>
+                        <p className="text-sm text-muted-foreground">Total de Serviços</p>
                     </CardContent>
                 </Card>
                 <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-green-500/10 to-emerald-500/10">
                     <CardContent className="p-4 text-center">
                         <p className="text-3xl font-bold text-green-600">
-                            {pacotes.filter(p => p.ativo).length}
+                            {servicos.filter(s => s.ativo).length}
                         </p>
                         <p className="text-sm text-muted-foreground">Ativos</p>
                     </CardContent>
@@ -359,17 +348,9 @@ export default function PacotesPage() {
                 <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
                     <CardContent className="p-4 text-center">
                         <p className="text-3xl font-bold text-blue-600">
-                            {formatarMoeda(Math.min(...pacotes.map(p => p.preco)))}
+                            {servicos.length > 0 ? `R$ ${Math.min(...servicos.map(s => s.preco)).toFixed(0)}` : '-'}
                         </p>
                         <p className="text-sm text-muted-foreground">A partir de</p>
-                    </CardContent>
-                </Card>
-                <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-purple-500/10 to-pink-500/10">
-                    <CardContent className="p-4 text-center">
-                        <p className="text-3xl font-bold text-purple-600">
-                            {Math.max(...pacotes.map(p => p.sessoes))}
-                        </p>
-                        <p className="text-sm text-muted-foreground">Máx. Sessões</p>
                     </CardContent>
                 </Card>
             </div>

@@ -31,6 +31,24 @@ interface StudioConfig {
     sendToOwnerOnBooking: boolean
     sendToClientOnBooking: boolean
     sendReminderToClient: boolean
+    // PIX
+    pixEnabled: boolean
+    pixKey: string
+    pixKeyType: string
+    establishmentName: string
+    signalPercentage: number
+    sessionBaseValue: number
+    paymentPolicy: string
+}
+
+// Interface para serviços
+interface Servico {
+    id: string
+    nome: string
+    descricao: string
+    preco: number
+    duracao: string
+    ativo: boolean
 }
 
 export default function AgendarPage() {
@@ -61,19 +79,29 @@ export default function AgendarPage() {
         loadWeather()
     }, [])
 
-    // Horários disponíveis (9h às 19h)
+    // Horários disponíveis (9h às 17h)
     const horarios = [
         "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-        "14:00", "14:30", "15:00", "15:30", "16:00", "16:30",
-        "17:00", "17:30", "18:00", "18:30", "19:00"
+        "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
     ]
 
-    // Tipos de serviço
-    const servicos = [
-        { id: "natural", nome: "Bronzeamento Natural", duracao: "30-45 min", preco: "R$ 60" },
-        { id: "spray", nome: "Bronzeamento Spray", duracao: "20-30 min", preco: "R$ 80" },
-        { id: "manutencao", nome: "Manutenção", duracao: "15-20 min", preco: "R$ 40" },
-    ]
+    // Serviços - carregar do localStorage ou usar padrão
+    const [servicos, setServicos] = useState<Servico[]>([
+        { id: "natural", nome: "Bronzeamento Natural", descricao: "", preco: 60, duracao: "30-45 min", ativo: true },
+        { id: "cabine", nome: "Bronze na Cabine", descricao: "", preco: 80, duracao: "20-30 min", ativo: true },
+    ])
+
+    // Carregar serviços do localStorage
+    useEffect(() => {
+        const savedServicos = localStorage.getItem("sunsync_servicos")
+        if (savedServicos) {
+            const parsed = JSON.parse(savedServicos)
+            const ativos = parsed.filter((s: Servico) => s.ativo)
+            if (ativos.length > 0) {
+                setServicos(ativos)
+            }
+        }
+    }, [])
 
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr + "T00:00:00")
@@ -156,8 +184,25 @@ export default function AgendarPage() {
 
         setSubmitting(false)
 
+        // Obter preço do serviço selecionado
+        const servicoSelecionado = servicos.find(s => s.id === selectedTipo)
+        const precoServico = servicoSelecionado?.preco || 0
+
+        // Construir URL com dados PIX se habilitado
+        let successUrl = `/agendar/sucesso?data=${selectedDate}&horario=${selectedHorario}&nome=${encodeURIComponent(formData.nome)}&servico=${encodeURIComponent(servicoSelecionado?.nome || '')}&preco=${precoServico}`
+
+        // Adicionar dados PIX se configurado
+        if (config?.pixEnabled && config?.pixKey) {
+            successUrl += `&pixEnabled=true`
+            successUrl += `&pixKey=${encodeURIComponent(config.pixKey)}`
+            successUrl += `&pixKeyType=${config.pixKeyType}`
+            successUrl += `&establishmentName=${encodeURIComponent(config.establishmentName || 'Studio')}`
+            successUrl += `&signalPercentage=${config.signalPercentage || 50}`
+            successUrl += `&ownerPhone=${encodeURIComponent(config.ownerPhone || '')}`
+        }
+
         // Redirecionar para página de sucesso
-        window.location.href = `/agendar/sucesso?data=${selectedDate}&horario=${selectedHorario}&nome=${encodeURIComponent(formData.nome)}`
+        window.location.href = successUrl
     }
 
 
@@ -361,7 +406,7 @@ export default function AgendarPage() {
                                                     ⏱️ {servico.duracao}
                                                 </p>
                                             </div>
-                                            <p className="text-xl font-bold">{servico.preco}</p>
+                                            <p className="text-xl font-bold">R$ {servico.preco.toFixed(2).replace('.', ',')}</p>
                                         </div>
                                     </button>
                                 ))}
@@ -419,7 +464,7 @@ export default function AgendarPage() {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-2xl font-bold font-mono text-amber-600">{selectedHorario}</p>
-                                        <p className="text-sm font-medium">{servicos.find(s => s.id === selectedTipo)?.preco}</p>
+                                        <p className="text-sm font-medium">R$ {(servicos.find(s => s.id === selectedTipo)?.preco || 0).toFixed(2).replace('.', ',')}</p>
                                     </div>
                                 </div>
                             </CardContent>
