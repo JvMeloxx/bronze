@@ -13,6 +13,15 @@ import {
 } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 
+import { Textarea } from "@/components/ui/textarea"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+
 // Tipos para configurações
 interface StudioConfig {
     ownerPhone: string
@@ -20,7 +29,24 @@ interface StudioConfig {
     sendToOwnerOnBooking: boolean
     sendToClientOnBooking: boolean
     sendReminderToClient: boolean
+    // PIX Config
+    pixEnabled: boolean
+    pixKey: string
+    pixKeyType: "telefone" | "cpf" | "email" | "aleatoria"
+    establishmentName: string
+    signalPercentage: number
+    sessionBaseValue: number
+    paymentPolicy: string
 }
+
+const defaultPaymentPolicy = `IMPORTANTE: Para confirmar o seu atendimento, é necessário realizar o pagamento de 50% do valor como sinal no ato do agendamento.
+
+• Caso o sinal não seja feito, o horário será cancelado pelo sistema.
+• O sinal é não reembolsável em caso de desistência ou não comparecimento.
+• A cliente tem direito a UMA remarcação, desde que avisado com antecedência.
+• Após essa remarcação, caso haja nova necessidade de alterar ou cancelar de última hora, será necessário realizar um novo sinal.
+
+Agradeço a compreensão e o respeito pelo meu trabalho e pela agenda. 🤎`
 
 const defaultConfig: StudioConfig = {
     ownerPhone: "",
@@ -28,6 +54,14 @@ const defaultConfig: StudioConfig = {
     sendToOwnerOnBooking: true,
     sendToClientOnBooking: true,
     sendReminderToClient: true,
+    // PIX Config
+    pixEnabled: true,
+    pixKey: "",
+    pixKeyType: "telefone",
+    establishmentName: "",
+    signalPercentage: 50,
+    sessionBaseValue: 120,
+    paymentPolicy: defaultPaymentPolicy,
 }
 
 export default function ConfiguracoesPage() {
@@ -329,6 +363,161 @@ export default function ConfiguracoesPage() {
                         className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
                     >
                         💾 Salvar Configurações
+                    </Button>
+                </CardContent>
+            </Card>
+
+            {/* Card Pagamento PIX */}
+            <Card className="border-green-200 dark:border-green-800">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <span className="text-2xl">💳</span>
+                        Configurações de Pagamento PIX
+                    </CardTitle>
+                    <CardDescription>
+                        Configure o sinal de 50% para confirmação de agendamentos
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {/* Toggle PIX */}
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-green-50 dark:bg-green-900/20">
+                        <div>
+                            <p className="font-medium">Exigir Sinal PIX</p>
+                            <p className="text-sm text-muted-foreground">
+                                Mostrar instruções de pagamento na confirmação
+                            </p>
+                        </div>
+                        <Switch
+                            checked={config.pixEnabled}
+                            onCheckedChange={(checked) =>
+                                setConfig({ ...config, pixEnabled: checked })
+                            }
+                        />
+                    </div>
+
+                    {/* Nome do Estabelecimento */}
+                    <div className="space-y-2">
+                        <Label htmlFor="establishmentName">Nome do Estabelecimento</Label>
+                        <Input
+                            id="establishmentName"
+                            value={config.establishmentName}
+                            onChange={(e) =>
+                                setConfig({ ...config, establishmentName: e.target.value })
+                            }
+                            placeholder="Ex: Studio Sol e Bronze"
+                            className="border-green-200 dark:border-green-800"
+                            disabled={!config.pixEnabled}
+                        />
+                    </div>
+
+                    {/* Tipo de Chave PIX */}
+                    <div className="space-y-2">
+                        <Label>Tipo de Chave PIX</Label>
+                        <Select
+                            value={config.pixKeyType}
+                            onValueChange={(value) =>
+                                setConfig({ ...config, pixKeyType: value as "telefone" | "cpf" | "email" | "aleatoria" })
+                            }
+                        >
+                            <SelectTrigger className="border-green-200 dark:border-green-800">
+                                <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="telefone">📱 Telefone</SelectItem>
+                                <SelectItem value="cpf">🪪 CPF</SelectItem>
+                                <SelectItem value="email">📧 Email</SelectItem>
+                                <SelectItem value="aleatoria">🔑 Chave Aleatória</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Chave PIX */}
+                    <div className="space-y-2">
+                        <Label htmlFor="pixKey">Chave PIX</Label>
+                        <Input
+                            id="pixKey"
+                            value={config.pixKey}
+                            onChange={(e) =>
+                                setConfig({ ...config, pixKey: e.target.value })
+                            }
+                            placeholder={
+                                config.pixKeyType === "telefone" ? "(61) 99999-9999" :
+                                    config.pixKeyType === "cpf" ? "000.000.000-00" :
+                                        config.pixKeyType === "email" ? "email@exemplo.com" :
+                                            "sua-chave-aleatoria"
+                            }
+                            className="border-green-200 dark:border-green-800"
+                            disabled={!config.pixEnabled}
+                        />
+                    </div>
+
+                    {/* Valor e Porcentagem */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="sessionValue">Valor da Sessão (R$)</Label>
+                            <Input
+                                id="sessionValue"
+                                type="number"
+                                value={config.sessionBaseValue}
+                                onChange={(e) =>
+                                    setConfig({ ...config, sessionBaseValue: Number(e.target.value) })
+                                }
+                                placeholder="120"
+                                className="border-green-200 dark:border-green-800"
+                                disabled={!config.pixEnabled}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="signalPercent">Sinal (%)</Label>
+                            <Input
+                                id="signalPercent"
+                                type="number"
+                                value={config.signalPercentage}
+                                onChange={(e) =>
+                                    setConfig({ ...config, signalPercentage: Number(e.target.value) })
+                                }
+                                placeholder="50"
+                                className="border-green-200 dark:border-green-800"
+                                disabled={!config.pixEnabled}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Preview do Valor */}
+                    {config.pixEnabled && (
+                        <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/30 text-center">
+                            <p className="text-sm text-muted-foreground">Valor do sinal a ser cobrado:</p>
+                            <p className="text-3xl font-bold text-green-600">
+                                R$ {((config.sessionBaseValue * config.signalPercentage) / 100).toFixed(2).replace(".", ",")}
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Política de Pagamento */}
+                    <div className="space-y-2">
+                        <Label htmlFor="paymentPolicy">Política de Pagamento/Cancelamento</Label>
+                        <Textarea
+                            id="paymentPolicy"
+                            value={config.paymentPolicy}
+                            onChange={(e) =>
+                                setConfig({ ...config, paymentPolicy: e.target.value })
+                            }
+                            rows={8}
+                            className="border-green-200 dark:border-green-800 text-sm"
+                            disabled={!config.pixEnabled}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Este texto será exibido para as clientes na página de confirmação
+                        </p>
+                    </div>
+
+                    {/* Botão Salvar */}
+                    <Button
+                        size="lg"
+                        onClick={handleSave}
+                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                    >
+                        💾 Salvar Configurações de Pagamento
                     </Button>
                 </CardContent>
             </Card>
