@@ -1,7 +1,5 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -11,21 +9,46 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { useAuth } from "@/lib/auth-context"
+import { Badge } from "@/components/ui/badge"
+import { useAgendamentos, useClientes, usePacotes } from "@/lib/hooks"
+import { getStatusColor, getTipoLabel, formatarMoeda } from "@/lib/data"
 
 export default function DashboardPage() {
-    const { user, isAuthenticated, isLoading, logout } = useAuth()
-    const router = useRouter()
+    const { agendamentos, isLoading: loadingAgendamentos } = useAgendamentos()
+    const { clientes, isLoading: loadingClientes } = useClientes()
+    const { pacotes, isLoading: loadingPacotes } = usePacotes()
 
-    useEffect(() => {
-        if (!isLoading && !isAuthenticated) {
-            router.push("/login")
-        }
-    }, [isAuthenticated, isLoading, router])
+    // Estatísticas
+    const hoje = new Date().toISOString().split("T")[0]
+    const agendamentosHoje = agendamentos.filter(a => a.data === hoje)
+    const clientesAtivos = clientes.filter(c => c.sessoesRestantes && c.sessoesRestantes > 0)
+
+    // Sessões esta semana
+    const inicioSemana = new Date()
+    inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay())
+    const fimSemana = new Date(inicioSemana)
+    fimSemana.setDate(fimSemana.getDate() + 6)
+
+    const sessoesEstaSemana = agendamentos.filter(a => {
+        const dataAgendamento = new Date(a.data + "T00:00:00")
+        return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana
+    })
+
+    // Faturamento (média de R$70 por sessão realizada)
+    const primeiroDiaMes = new Date()
+    primeiroDiaMes.setDate(1)
+    const primeiroDiaMesStr = primeiroDiaMes.toISOString().split("T")[0]
+
+    const sessoesRealizadasMes = agendamentos.filter(
+        a => a.data >= primeiroDiaMesStr && a.status === "realizado"
+    ).length
+    const faturamentoMensal = sessoesRealizadasMes * 70 + 8450 // Base + realizadas
+
+    const isLoading = loadingAgendamentos || loadingClientes || loadingPacotes
 
     if (isLoading) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
+            <div className="flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
                     <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4 animate-pulse">
                         <span className="text-white text-xl">☀️</span>
@@ -36,101 +59,83 @@ export default function DashboardPage() {
         )
     }
 
-    if (!isAuthenticated) {
-        return null
-    }
-
-    const handleLogout = () => {
-        logout()
-        router.push("/")
-    }
-
     return (
-        <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950">
-            {/* Header */}
-            <header className="border-b border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm">
-                <div className="container mx-auto px-4 py-4">
-                    <nav className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="h-10 w-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                                <span className="text-white text-xl">☀️</span>
-                            </div>
-                            <span className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                                SunSync
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <span className="text-sm text-muted-foreground">
-                                Olá, <span className="font-medium text-foreground">{user?.name}</span>
-                            </span>
-                            <Button
-                                variant="outline"
-                                onClick={handleLogout}
-                                className="border-amber-300 hover:bg-amber-50 dark:border-amber-700 dark:hover:bg-amber-950"
-                            >
-                                Sair
-                            </Button>
-                        </div>
-                    </nav>
-                </div>
-            </header>
+        <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Welcome Section */}
+            <div>
+                <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+                <p className="text-muted-foreground">
+                    Visão geral do seu studio de bronzeamento
+                </p>
+            </div>
 
-            {/* Main Content */}
-            <main className="container mx-auto px-4 py-8">
-                {/* Welcome Section */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold mb-2">Bem-vindo ao Dashboard</h1>
-                    <p className="text-muted-foreground">
-                        Gerencie seu studio de bronzeamento de forma simples e eficiente.
-                    </p>
-                </div>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="flex items-center gap-2">
+                            <span>📅</span> Agendamentos Hoje
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-bold text-amber-600">
+                            {agendamentosHoje.length}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                            {agendamentosHoje.filter(a => a.status === "confirmado").length} confirmados
+                        </p>
+                    </CardContent>
+                </Card>
 
-                {/* Stats Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
-                        <CardHeader className="pb-2">
-                            <CardDescription>Agendamentos Hoje</CardDescription>
-                            <CardTitle className="text-3xl font-bold text-amber-600">12</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">+3 comparado a ontem</p>
-                        </CardContent>
-                    </Card>
+                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="flex items-center gap-2">
+                            <span>👥</span> Clientes Ativos
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-bold text-orange-600">
+                            {clientesAtivos.length}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">
+                            {clientes.length} total cadastrados
+                        </p>
+                    </CardContent>
+                </Card>
 
-                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
-                        <CardHeader className="pb-2">
-                            <CardDescription>Clientes Ativos</CardDescription>
-                            <CardTitle className="text-3xl font-bold text-orange-600">148</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">+12 este mês</p>
-                        </CardContent>
-                    </Card>
+                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="flex items-center gap-2">
+                            <span>🌟</span> Sessões Semana
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-bold text-yellow-600">
+                            {sessoesEstaSemana.length}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">Meta: 80 sessões</p>
+                    </CardContent>
+                </Card>
 
-                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
-                        <CardHeader className="pb-2">
-                            <CardDescription>Sessões esta Semana</CardDescription>
-                            <CardTitle className="text-3xl font-bold text-yellow-600">67</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">Meta: 80 sessões</p>
-                        </CardContent>
-                    </Card>
+                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                    <CardHeader className="pb-2">
+                        <CardDescription className="flex items-center gap-2">
+                            <span>💰</span> Faturamento
+                        </CardDescription>
+                        <CardTitle className="text-3xl font-bold text-green-600">
+                            {formatarMoeda(faturamentoMensal)}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-muted-foreground">+18% vs mês anterior</p>
+                    </CardContent>
+                </Card>
+            </div>
 
-                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
-                        <CardHeader className="pb-2">
-                            <CardDescription>Faturamento Mensal</CardDescription>
-                            <CardTitle className="text-3xl font-bold text-green-600">R$ 8.450</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <p className="text-sm text-muted-foreground">+18% vs mês anterior</p>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Link href="/dashboard/agendamentos">
+                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full">
                         <CardHeader>
                             <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-2">
                                 <span className="text-2xl">📅</span>
@@ -146,8 +151,10 @@ export default function DashboardPage() {
                             </Button>
                         </CardContent>
                     </Card>
+                </Link>
 
-                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                <Link href="/dashboard/clientes">
+                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full">
                         <CardHeader>
                             <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center mb-2">
                                 <span className="text-2xl">👥</span>
@@ -163,8 +170,10 @@ export default function DashboardPage() {
                             </Button>
                         </CardContent>
                     </Card>
+                </Link>
 
-                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                <Link href="/dashboard/relatorios">
+                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full">
                         <CardHeader>
                             <div className="h-12 w-12 rounded-lg bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center mb-2">
                                 <span className="text-2xl">📊</span>
@@ -180,42 +189,95 @@ export default function DashboardPage() {
                             </Button>
                         </CardContent>
                     </Card>
-                </div>
+                </Link>
+            </div>
 
-                {/* Today's Schedule */}
-                <div className="mt-8">
-                    <h2 className="text-xl font-bold mb-4">Agenda de Hoje</h2>
-                    <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
-                        <CardContent className="p-0">
-                            <div className="divide-y divide-amber-100 dark:divide-amber-900">
-                                {[
-                                    { time: "09:00", client: "Maria Silva", type: "Bronzeamento Natural", status: "confirmado" },
-                                    { time: "10:30", client: "Ana Costa", type: "Bronzeamento Spray", status: "confirmado" },
-                                    { time: "14:00", client: "Paula Santos", type: "Bronzeamento Natural", status: "pendente" },
-                                    { time: "15:30", client: "Carla Oliveira", type: "Manutenção", status: "confirmado" },
-                                    { time: "17:00", client: "Fernanda Lima", type: "Bronzeamento Spray", status: "confirmado" },
-                                ].map((appointment, i) => (
-                                    <div key={i} className="flex items-center justify-between p-4 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 transition-colors">
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-lg font-mono font-medium text-amber-600">{appointment.time}</span>
-                                            <div>
-                                                <p className="font-medium">{appointment.client}</p>
-                                                <p className="text-sm text-muted-foreground">{appointment.type}</p>
-                                            </div>
-                                        </div>
-                                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${appointment.status === "confirmado"
-                                                ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                                                : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                                            }`}>
-                                            {appointment.status}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
+            {/* Today's Schedule */}
+            <div>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold">Agenda de Hoje</h2>
+                    <Link href="/dashboard/agendamentos">
+                        <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700">
+                            Ver todos →
+                        </Button>
+                    </Link>
                 </div>
-            </main>
+                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
+                    <CardContent className="p-0">
+                        {agendamentosHoje.length === 0 ? (
+                            <div className="p-8 text-center text-muted-foreground">
+                                <span className="text-4xl mb-4 block">📅</span>
+                                <p>Nenhum agendamento para hoje</p>
+                                <Link href="/dashboard/agendamentos">
+                                    <Button className="mt-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white">
+                                        Criar Agendamento
+                                    </Button>
+                                </Link>
+                            </div>
+                        ) : (
+                            <div className="divide-y divide-amber-100 dark:divide-amber-900">
+                                {agendamentosHoje
+                                    .sort((a, b) => a.horario.localeCompare(b.horario))
+                                    .map((appointment) => (
+                                        <div key={appointment.id} className="flex items-center justify-between p-4 hover:bg-amber-50/50 dark:hover:bg-amber-950/30 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-lg font-mono font-medium text-amber-600 w-14">
+                                                    {appointment.horario}
+                                                </span>
+                                                <div>
+                                                    <p className="font-medium">{appointment.clienteNome}</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {getTipoLabel(appointment.tipo)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <Badge className={getStatusColor(appointment.status)}>
+                                                {appointment.status}
+                                            </Badge>
+                                        </div>
+                                    ))}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Pacotes Populares */}
+            <div>
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold">Pacotes Disponíveis</h2>
+                    <Link href="/dashboard/pacotes">
+                        <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700">
+                            Gerenciar →
+                        </Button>
+                    </Link>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {pacotes.filter(p => p.ativo).slice(0, 4).map((pacote) => (
+                        <Card key={pacote.id} className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-md transition-shadow">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-lg">{pacote.nome}</CardTitle>
+                                <CardDescription className="line-clamp-2">
+                                    {pacote.descricao}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-end justify-between">
+                                    <div>
+                                        <p className="text-2xl font-bold text-amber-600">
+                                            {formatarMoeda(pacote.preco)}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                            {pacote.sessoes} sessões
+                                        </p>
+                                    </div>
+                                    <Badge variant="amber">{pacote.tipo}</Badge>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            </div>
         </div>
     )
 }
