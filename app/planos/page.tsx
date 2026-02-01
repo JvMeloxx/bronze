@@ -12,9 +12,9 @@ import {
 import { Badge } from "@/components/ui/badge"
 
 export default function PlanosPage() {
-    // URLs do checkout Kiwify (você vai configurar depois)
-    const KIWIFY_BASICO = "https://pay.kiwify.com.br/SEU_LINK_BASICO"
-    const KIWIFY_PROFISSIONAL = "https://pay.kiwify.com.br/SEU_LINK_PROFISSIONAL"
+    // URLs do checkout Kiwify
+    const KIWIFY_BASICO = "https://pay.kiwify.com.br/DFttJ76"
+    const KIWIFY_PROFISSIONAL = "https://pay.kiwify.com.br/g6KElm3"
 
     const planos = [
         {
@@ -121,8 +121,8 @@ export default function PlanosPage() {
                         <Card
                             key={plano.id}
                             className={`relative overflow-hidden transition-all duration-300 hover:shadow-2xl ${plano.destaque
-                                    ? "border-2 border-amber-500 shadow-xl shadow-amber-500/20"
-                                    : "border-amber-200 dark:border-amber-800"
+                                ? "border-2 border-amber-500 shadow-xl shadow-amber-500/20"
+                                : "border-amber-200 dark:border-amber-800"
                                 }`}
                         >
                             {plano.destaque && (
@@ -167,8 +167,8 @@ export default function PlanosPage() {
                                 <Button
                                     size="lg"
                                     className={`w-full text-lg py-6 ${plano.destaque
-                                            ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
-                                            : "bg-amber-100 hover:bg-amber-200 text-amber-900"
+                                        ? "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                                        : "bg-amber-100 hover:bg-amber-200 text-amber-900"
                                         }`}
                                     onClick={() => {
                                         if (plano.emBreve) {
