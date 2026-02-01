@@ -60,8 +60,8 @@ export default function AgendamentosPage() {
         return acc
     }, {} as Record<string, Agendamento[]>)
 
-    // Próximos 7 dias
-    const proximosDias = Array.from({ length: 7 }, (_, i) => {
+    // Próximos 30 dias (expandido)
+    const proximosDias = Array.from({ length: 30 }, (_, i) => {
         const date = new Date()
         date.setDate(date.getDate() + i)
         return date.toISOString().split("T")[0]
@@ -555,9 +555,20 @@ export default function AgendamentosPage() {
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <Badge className={getStatusColor(ag.status)}>
-                                                    {ag.status}
-                                                </Badge>
+                                                <div className="flex items-center gap-2">
+                                                    <Badge className={getStatusColor(ag.status)}>
+                                                        {ag.status}
+                                                    </Badge>
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => handleDelete(ag.id)}
+                                                        className="hover:text-red-600"
+                                                        title="Excluir agendamento"
+                                                    >
+                                                        🗑️
+                                                    </Button>
+                                                </div>
                                             </div>
                                         ))}
                                 </div>
