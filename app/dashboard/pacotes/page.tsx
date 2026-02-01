@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -23,25 +23,15 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toast"
-
-// Interface para serviços
-interface Servico {
-    id: string
-    nome: string
-    descricao: string
-    preco: number
-    duracao: string
-    ativo: boolean
-}
-
-const STORAGE_KEY = "sunsync_servicos"
+import { useServicosDB, Servico } from "@/lib/hooks-supabase"
+import { formatarMoeda } from "@/lib/data"
 
 export default function ServicosPage() {
     const { addToast } = useToast()
-    const [servicos, setServicos] = useState<Servico[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    const { servicos, isLoading, addServico, updateServico, deleteServico } = useServicosDB()
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingServico, setEditingServico] = useState<Servico | null>(null)
+    const [isSaving, setIsSaving] = useState(false)
 
     // Form state
     const [formData, setFormData] = useState({
@@ -49,31 +39,7 @@ export default function ServicosPage() {
         descricao: "",
         preco: 0,
         duracao: "30 min",
-        ativo: true
     })
-
-    // Carregar serviços do localStorage
-    useEffect(() => {
-        const saved = localStorage.getItem(STORAGE_KEY)
-        if (saved) {
-            setServicos(JSON.parse(saved))
-        } else {
-            // Serviços padrão
-            const defaultServicos: Servico[] = [
-                { id: "1", nome: "Bronzeamento Natural", descricao: "Bronze natural com o sol", preco: 60, duracao: "30-45 min", ativo: true },
-                { id: "2", nome: "Bronze na Cabine", descricao: "Bronze rápido na cabine de bronzeamento", preco: 80, duracao: "20-30 min", ativo: true },
-            ]
-            setServicos(defaultServicos)
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultServicos))
-        }
-        setIsLoading(false)
-    }, [])
-
-    // Salvar no localStorage sempre que mudar
-    const saveServicos = (newServicos: Servico[]) => {
-        setServicos(newServicos)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newServicos))
-    }
 
     const resetForm = () => {
         setFormData({
@@ -81,7 +47,6 @@ export default function ServicosPage() {
             descricao: "",
             preco: 0,
             duracao: "30 min",
-            ativo: true
         })
         setEditingServico(null)
     }
@@ -93,8 +58,7 @@ export default function ServicosPage() {
                 nome: servico.nome,
                 descricao: servico.descricao,
                 preco: servico.preco,
-                duracao: servico.duracao,
-                ativo: servico.ativo
+                duracao: servico.duracao.toString() + " min",
             })
         } else {
             resetForm()
@@ -102,46 +66,61 @@ export default function ServicosPage() {
         setIsDialogOpen(true)
     }
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!formData.nome || formData.preco <= 0) {
             addToast({ title: "Erro", description: "Preencha nome e preço", variant: "destructive" })
             return
         }
 
+        setIsSaving(true)
+        let success = false
+
+        // Converter duração string para numero (minutos)
+        const duracaoMinutos = parseInt(formData.duracao.replace(/\D/g, '')) || 30
+
         if (editingServico) {
             // Atualizar
-            const updated = servicos.map(s =>
-                s.id === editingServico.id ? { ...s, ...formData } : s
-            )
-            saveServicos(updated)
-            addToast({ title: "Sucesso!", description: "Serviço atualizado", variant: "success" })
+            success = await updateServico(editingServico.id, {
+                nome: formData.nome,
+                descricao: formData.descricao,
+                preco: formData.preco,
+                duracao: duracaoMinutos
+            })
+            if (success) addToast({ title: "Sucesso!", description: "Serviço atualizado", variant: "success" })
         } else {
             // Criar novo
-            const newServico: Servico = {
-                id: Date.now().toString(),
-                ...formData
+            const newServico = await addServico({
+                nome: formData.nome,
+                descricao: formData.descricao,
+                preco: formData.preco,
+                duracao: duracaoMinutos,
+                ativo: true
+            })
+            if (newServico) {
+                success = true
+                addToast({ title: "Sucesso!", description: "Serviço criado", variant: "success" })
             }
-            saveServicos([...servicos, newServico])
-            addToast({ title: "Sucesso!", description: "Serviço criado", variant: "success" })
         }
 
-        setIsDialogOpen(false)
-        resetForm()
+        setIsSaving(false)
+
+        if (success) {
+            setIsDialogOpen(false)
+            resetForm()
+        } else {
+            addToast({ title: "Erro", description: "Falha ao salvar. Tente novamente.", variant: "destructive" })
+        }
     }
 
-    const handleToggleAtivo = (id: string) => {
-        const updated = servicos.map(s =>
-            s.id === id ? { ...s, ativo: !s.ativo } : s
-        )
-        saveServicos(updated)
-        addToast({ title: "Status alterado" })
+    const handleToggleAtivo = async (servico: Servico) => {
+        const success = await updateServico(servico.id, { ativo: !servico.ativo })
+        if (success) addToast({ title: "Status alterado" })
     }
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (confirm("Tem certeza que deseja excluir este serviço?")) {
-            const updated = servicos.filter(s => s.id !== id)
-            saveServicos(updated)
-            addToast({ title: "Serviço excluído" })
+            const success = await deleteServico(id)
+            if (success) addToast({ title: "Serviço excluído" })
         }
     }
 
@@ -221,12 +200,12 @@ export default function ServicosPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="duracao">Duração</Label>
+                                    <Label htmlFor="duracao">Duração (apenas números)</Label>
                                     <Input
                                         id="duracao"
                                         value={formData.duracao}
                                         onChange={(e) => setFormData({ ...formData, duracao: e.target.value })}
-                                        placeholder="Ex: 30-45 min"
+                                        placeholder="Ex: 30 min"
                                         className="border-amber-200 dark:border-amber-800"
                                     />
                                 </div>
@@ -238,9 +217,10 @@ export default function ServicosPage() {
                             </Button>
                             <Button
                                 onClick={handleSubmit}
+                                disabled={isSaving}
                                 className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
                             >
-                                {editingServico ? "Salvar" : "Criar Serviço"}
+                                {isSaving ? "Salvando..." : editingServico ? "Salvar" : "Criar Serviço"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -290,11 +270,11 @@ export default function ServicosPage() {
                                 <div className="flex items-end justify-between">
                                     <div>
                                         <p className="text-3xl font-bold text-amber-600">
-                                            R$ {servico.preco.toFixed(2).replace('.', ',')}
+                                            {formatarMoeda(servico.preco)}
                                         </p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-sm text-muted-foreground">⏱️ {servico.duracao}</p>
+                                        <p className="text-sm text-muted-foreground">⏱️ {servico.duracao} min</p>
                                     </div>
                                 </div>
 
@@ -303,7 +283,7 @@ export default function ServicosPage() {
                                         variant="outline"
                                         size="sm"
                                         className="flex-1"
-                                        onClick={() => handleToggleAtivo(servico.id)}
+                                        onClick={() => handleToggleAtivo(servico)}
                                     >
                                         {servico.ativo ? "Desativar" : "Ativar"}
                                     </Button>
@@ -348,7 +328,7 @@ export default function ServicosPage() {
                 <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
                     <CardContent className="p-4 text-center">
                         <p className="text-3xl font-bold text-blue-600">
-                            {servicos.length > 0 ? `R$ ${Math.min(...servicos.map(s => s.preco)).toFixed(0)}` : '-'}
+                            {servicos.length > 0 ? formatarMoeda(Math.min(...servicos.map(s => s.preco))) : '-'}
                         </p>
                         <p className="text-sm text-muted-foreground">A partir de</p>
                     </CardContent>
