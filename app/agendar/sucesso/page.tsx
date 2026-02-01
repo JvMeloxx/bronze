@@ -1,7 +1,6 @@
 "use client"
 
 import { Suspense, useState, useEffect } from "react"
-import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import {
@@ -83,29 +82,6 @@ function SucessoContent() {
     const signalValue = pixConfig
         ? (pixConfig.sessionBaseValue * pixConfig.signalPercentage) / 100
         : 0
-
-    // Gerar link de compartilhamento
-    const shareLink = typeof window !== "undefined"
-        ? `${window.location.origin}/agendar`
-        : ""
-
-    const handleShare = async () => {
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: "Agende seu bronzeamento!",
-                    text: "Agende seu horário no SunSync - Studio de Bronzeamento",
-                    url: shareLink,
-                })
-            } catch {
-                // User cancelled sharing
-            }
-        } else {
-            // Fallback: copy to clipboard
-            navigator.clipboard.writeText(shareLink)
-            alert("Link copiado para a área de transferência!")
-        }
-    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-50 dark:from-zinc-950 dark:via-zinc-900 dark:to-zinc-950 flex items-center justify-center p-4">
@@ -217,36 +193,21 @@ function SucessoContent() {
                         </p>
                     </div>
 
-                    {/* QR Code Section */}
-                    <div className="p-4 rounded-xl bg-gray-50 dark:bg-zinc-800 text-center">
-                        <p className="text-sm font-medium mb-2">Compartilhe com amigos!</p>
-                        <div className="bg-white p-4 rounded-lg inline-block mb-2">
-                            {/* Simple QR Code placeholder - you can use a library like qrcode.react */}
-                            <div className="w-32 h-32 mx-auto flex items-center justify-center bg-gradient-to-br from-amber-100 to-orange-100 rounded-lg">
-                                <div className="text-center">
-                                    <span className="text-3xl block mb-1">📲</span>
-                                    <span className="text-xs text-amber-700">Scan QR</span>
-                                </div>
-                            </div>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Escaneie para agendar
-                        </p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex flex-col gap-2">
+                    {/* Botão Concluir - Abre WhatsApp */}
+                    <div className="pt-2">
                         <Button
-                            onClick={handleShare}
-                            className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                            onClick={() => {
+                                // Abre o app do WhatsApp
+                                window.open("https://wa.me/", "_blank")
+                            }}
+                            size="lg"
+                            className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white text-lg py-6"
                         >
-                            📤 Compartilhar Link
+                            ✓ Concluir
                         </Button>
-                        <Link href="/" className="w-full">
-                            <Button variant="outline" className="w-full">
-                                ← Voltar ao Início
-                            </Button>
-                        </Link>
+                        <p className="text-xs text-center text-muted-foreground mt-2">
+                            Clique para abrir o WhatsApp e enviar o comprovante
+                        </p>
                     </div>
                 </CardContent>
             </Card>
