@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -8,13 +9,15 @@ interface NavItem {
     label: string
     href: string
     icon: string
+    isPro?: boolean
 }
 
-const navItems: NavItem[] = [
+const baseNavItems: NavItem[] = [
     { label: "Dashboard", href: "/dashboard", icon: "📊" },
     { label: "Agendamentos", href: "/dashboard/agendamentos", icon: "📅" },
     { label: "Clientes", href: "/dashboard/clientes", icon: "👥" },
     { label: "Serviços", href: "/dashboard/pacotes", icon: "💆" },
+    { label: "Artes", href: "/dashboard/artes", icon: "🎨", isPro: true },
     { label: "Relatórios", href: "/dashboard/relatorios", icon: "📈" },
     { label: "Configurações", href: "/dashboard/configuracoes", icon: "⚙️" },
 ]
@@ -22,6 +25,21 @@ const navItems: NavItem[] = [
 
 export function Sidebar() {
     const pathname = usePathname()
+    const [driveLink, setDriveLink] = useState<string | null>(null)
+
+    useEffect(() => {
+        const savedConfig = localStorage.getItem("sunsync_config")
+        if (savedConfig) {
+            const config = JSON.parse(savedConfig)
+            setDriveLink(config.driveArtesLink || null)
+        }
+    }, [])
+
+    // Filtra a aba Artes se não tiver link configurado
+    const navItems = baseNavItems.filter(item => {
+        if (item.isPro && !driveLink) return false
+        return true
+    })
 
     return (
         <aside className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0 z-30">
@@ -34,6 +52,11 @@ export function Sidebar() {
                     <span className="ml-2 text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
                         SunSync
                     </span>
+                    {driveLink && (
+                        <span className="ml-2 text-[10px] bg-gradient-to-r from-purple-500 to-pink-500 text-white px-1.5 py-0.5 rounded-full font-medium">
+                            PRO
+                        </span>
+                    )}
                 </div>
 
                 {/* Navigation */}
@@ -50,11 +73,17 @@ export function Sidebar() {
                                     "group flex items-center px-3 py-3 text-sm font-medium rounded-lg transition-all duration-200",
                                     isActive
                                         ? "bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-700 dark:text-amber-400 border-l-4 border-amber-500"
-                                        : "text-muted-foreground hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:text-amber-600"
+                                        : "text-muted-foreground hover:bg-amber-50 dark:hover:bg-amber-950/30 hover:text-amber-600",
+                                    item.isPro && "relative"
                                 )}
                             >
                                 <span className="mr-3 text-xl">{item.icon}</span>
                                 {item.label}
+                                {item.isPro && (
+                                    <span className="ml-auto text-[10px] bg-gradient-to-r from-purple-500 to-pink-500 text-white px-1.5 py-0.5 rounded-full">
+                                        PRO
+                                    </span>
+                                )}
                             </Link>
                         )
                     })}
@@ -74,11 +103,25 @@ export function Sidebar() {
 // Mobile navigation
 export function MobileNav() {
     const pathname = usePathname()
+    const [driveLink, setDriveLink] = useState<string | null>(null)
+
+    useEffect(() => {
+        const savedConfig = localStorage.getItem("sunsync_config")
+        if (savedConfig) {
+            const config = JSON.parse(savedConfig)
+            setDriveLink(config.driveArtesLink || null)
+        }
+    }, [])
+
+    const navItems = baseNavItems.filter(item => {
+        if (item.isPro && !driveLink) return false
+        return true
+    }).slice(0, 5)
 
     return (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-amber-200 dark:border-amber-800 z-50">
             <div className="flex justify-around py-2">
-                {navItems.slice(0, 5).map((item) => {
+                {navItems.map((item) => {
                     const isActive = pathname === item.href ||
                         (item.href !== "/dashboard" && pathname.startsWith(item.href))
 
