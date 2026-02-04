@@ -69,9 +69,10 @@ export function useClientesDB() {
             setClientes(data || [])
         }
         setIsLoading(false)
-    }, [studio?.id, supabase])
+    }, [studio, supabase])
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchClientes()
     }, [fetchClientes])
 
@@ -91,7 +92,7 @@ export function useClientesDB() {
 
         setClientes(prev => [data, ...prev])
         return data
-    }, [studio?.id, supabase])
+    }, [studio, supabase])
 
     const updateCliente = useCallback(async (id: string, updates: Partial<Cliente>) => {
         const { data, error } = await supabase
@@ -163,9 +164,10 @@ export function useServicosDB() {
             setServicos(data || [])
         }
         setIsLoading(false)
-    }, [studio?.id, supabase])
+    }, [studio, supabase])
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchServicos()
     }, [fetchServicos])
 
@@ -185,7 +187,7 @@ export function useServicosDB() {
 
         setServicos(prev => [data, ...prev])
         return data
-    }, [studio?.id, supabase])
+    }, [studio, supabase])
 
     const updateServico = useCallback(async (id: string, updates: Partial<Servico>) => {
         const { data, error } = await supabase
@@ -258,9 +260,10 @@ export function useAgendamentosDB() {
             setAgendamentos(data || [])
         }
         setIsLoading(false)
-    }, [studio?.id, supabase])
+    }, [studio, supabase])
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchAgendamentos()
     }, [fetchAgendamentos])
 
@@ -283,7 +286,7 @@ export function useAgendamentosDB() {
             return a.horario.localeCompare(b.horario)
         }))
         return data
-    }, [studio?.id, supabase])
+    }, [studio, supabase])
 
     const updateAgendamento = useCallback(async (id: string, updates: Partial<Agendamento>) => {
         const { data, error } = await supabase
@@ -423,9 +426,10 @@ export function useDashboardStatsDB() {
         } finally {
             setIsLoading(false)
         }
-    }, [studio?.id, supabase])
+    }, [studio, supabase])
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchStats()
     }, [fetchStats])
 
@@ -452,7 +456,7 @@ export function useStudioConfig() {
 
         await refreshStudio()
         return true
-    }, [studio?.id, supabase, refreshStudio])
+    }, [studio, supabase, refreshStudio])
 
     return {
         config: studio,

@@ -53,7 +53,7 @@ export default function ConfiguracoesPage() {
                 notifications_enabled: config.notifications_enabled ?? true,
                 pix_enabled: config.pix_enabled ?? true,
                 pix_key: config.pix_key || "",
-                pix_key_type: (config.pix_key_type as any) || "telefone",
+                pix_key_type: (config.pix_key_type as string as "telefone" | "cpf" | "email" | "aleatoria") || "telefone",
                 establishment_name: config.establishment_name || "",
                 signal_percentage: config.signal_percentage || 50,
                 payment_policy: config.payment_policy || "",

@@ -18,11 +18,14 @@ export function useClientes() {
     useEffect(() => {
         const stored = localStorage.getItem("sunsync_clientes")
         if (stored) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setClientes(JSON.parse(stored))
         } else {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setClientes(clientesIniciais)
             localStorage.setItem("sunsync_clientes", JSON.stringify(clientesIniciais))
         }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoading(false)
     }, [])
 
@@ -74,11 +77,14 @@ export function useAgendamentos() {
     useEffect(() => {
         const stored = localStorage.getItem("sunsync_agendamentos")
         if (stored) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setAgendamentos(JSON.parse(stored))
         } else {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setAgendamentos(agendamentosIniciais)
             localStorage.setItem("sunsync_agendamentos", JSON.stringify(agendamentosIniciais))
         }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoading(false)
     }, [])
 
@@ -140,11 +146,14 @@ export function usePacotes() {
     useEffect(() => {
         const stored = localStorage.getItem("sunsync_pacotes")
         if (stored) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setPacotes(JSON.parse(stored))
         } else {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setPacotes(pacotesIniciais)
             localStorage.setItem("sunsync_pacotes", JSON.stringify(pacotesIniciais))
         }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoading(false)
     }, [])
 

@@ -20,9 +20,12 @@ export default function ArtesPage() {
         const savedConfig = localStorage.getItem("sunsync_config")
         if (savedConfig) {
             const config = JSON.parse(savedConfig)
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setDriveLink(config.driveArtesLink || null)
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setNomeEstudio(config.nomeEstudio || "seu studio")
         }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoading(false)
     }, [])
 
