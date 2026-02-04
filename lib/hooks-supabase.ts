@@ -40,6 +40,7 @@ export interface Agendamento {
     servico_nome: string
     status: "pendente" | "confirmado" | "realizado" | "cancelado"
     duracao: number
+    preco: number
     observacoes: string
     fonte: string
     created_at: string
@@ -343,42 +344,92 @@ export function useAgendamentosDB() {
 }
 
 // Hook para estatísticas do Dashboard
+// Hook para estatísticas do Dashboard (otimizado)
 export function useDashboardStatsDB() {
-    const { agendamentos } = useAgendamentosDB()
-    const { clientes } = useClientesDB()
+    const { studio } = useAuth()
+    const supabase = createClient()
 
-    const hoje = new Date().toISOString().split("T")[0]
-    const primeiroDiaMes = new Date()
-    primeiroDiaMes.setDate(1)
-    const primeiroDiaMesStr = primeiroDiaMes.toISOString().split("T")[0]
-
-    const agendamentosHoje = agendamentos.filter(a => a.data === hoje)
-
-    // Sessões esta semana
-    const inicioSemana = new Date()
-    inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay())
-    const fimSemana = new Date(inicioSemana)
-    fimSemana.setDate(fimSemana.getDate() + 6)
-
-    const sessoesEstaSemana = agendamentos.filter(a => {
-        const dataAgendamento = new Date(a.data)
-        return dataAgendamento >= inicioSemana && dataAgendamento <= fimSemana
+    const [stats, setStats] = useState({
+        agendamentosHoje: 0,
+        clientesAtivos: 0,
+        sessoesEstaSemana: 0,
+        faturamentoMensal: 0,
+        totalClientes: 0,
+        proximosAgendamentos: [] as Agendamento[]
     })
+    const [isLoading, setIsLoading] = useState(true)
 
-    // Faturamento simulado (média de R$70 por sessão)
-    const sessoesRealizadasMes = agendamentos.filter(
-        a => a.data >= primeiroDiaMesStr && a.status === "realizado"
-    ).length
-    const faturamentoMensal = sessoesRealizadasMes * 70
+    const fetchStats = useCallback(async () => {
+        if (!studio?.id) return
 
-    return {
-        agendamentosHoje: agendamentosHoje.length,
-        clientesAtivos: clientes.length,
-        sessoesEstaSemana: sessoesEstaSemana.length,
-        faturamentoMensal,
-        totalClientes: clientes.length,
-        proximosAgendamentos: agendamentosHoje.slice(0, 5)
-    }
+        setIsLoading(true)
+        const hoje = new Date().toISOString().split("T")[0]
+
+        // Datas para semana
+        const inicioSemana = new Date()
+        inicioSemana.setDate(inicioSemana.getDate() - inicioSemana.getDay()) // Domingo
+        const fimSemana = new Date(inicioSemana)
+        fimSemana.setDate(fimSemana.getDate() + 6) // Sábado
+
+        // Datas para mês
+        const primeiroDiaMes = new Date()
+        primeiroDiaMes.setDate(1)
+        const primeiroDiaMesStr = primeiroDiaMes.toISOString().split("T")[0]
+
+        try {
+            // 1. Agendamentos de Hoje (Lista completa para mostrar na tela)
+            const { data: agendamentosHojeData } = await supabase
+                .from("agendamentos")
+                .select("*")
+                .eq("studio_id", studio.id)
+                .eq("data", hoje)
+                .order("horario", { ascending: true })
+
+            // 2. Clientes (Apenas contagem)
+            const { count: totalClientesCount } = await supabase
+                .from("clientes")
+                .select("*", { count: 'exact', head: true })
+                .eq("studio_id", studio.id)
+
+            // 3. Sessões da Semana (Apenas contagem)
+            const { count: sessoesSemanaCount } = await supabase
+                .from("agendamentos")
+                .select("*", { count: 'exact', head: true })
+                .eq("studio_id", studio.id)
+                .gte("data", inicioSemana.toISOString().split("T")[0])
+                .lte("data", fimSemana.toISOString().split("T")[0])
+
+            // 4. Faturamento Mensal (Apenas preços dos realizados)
+            const { data: faturamentoData } = await supabase
+                .from("agendamentos")
+                .select("preco")
+                .eq("studio_id", studio.id)
+                .eq("status", "realizado")
+                .gte("data", primeiroDiaMesStr)
+
+            const faturamentoTotal = faturamentoData?.reduce((acc, curr) => acc + (curr.preco || 0), 0) || 0
+
+            setStats({
+                agendamentosHoje: agendamentosHojeData?.length || 0,
+                clientesAtivos: totalClientesCount || 0,
+                sessoesEstaSemana: sessoesSemanaCount || 0,
+                faturamentoMensal: faturamentoTotal,
+                totalClientes: totalClientesCount || 0,
+                proximosAgendamentos: agendamentosHojeData || []
+            })
+
+        } catch (error) {
+            console.error("Erro ao carregar estatísticas:", error)
+        } finally {
+            setIsLoading(false)
+        }
+    }, [studio?.id, supabase])
+
+    useEffect(() => {
+        fetchStats()
+    }, [fetchStats])
+
+    return { ...stats, isLoading, refetch: fetchStats }
 }
 
 // Hook para configurações do Studio

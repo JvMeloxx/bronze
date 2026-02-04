@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useDashboardStatsDB, useServicosDB } from "@/lib/hooks-supabase"
-import { getStatusColor, formatarMoeda } from "@/lib/data"
+import { getStatusColor, formatarMoeda } from "@/lib/utils"
 
 export default function DashboardPage() {
     const {
@@ -212,7 +212,7 @@ export default function DashboardPage() {
             <div>
                 <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold">Serviços Disponíveis</h2>
-                    <Link href="/dashboard/pacotes">
+                    <Link href="/dashboard/servicos">
                         <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700">
                             Gerenciar →
                         </Button>

@@ -77,6 +77,7 @@ CREATE TABLE agendamentos (
     servico_nome TEXT DEFAULT '',
     status TEXT NOT NULL DEFAULT 'pendente' CHECK (status IN ('pendente', 'confirmado', 'realizado', 'cancelado')),
     duracao INTEGER DEFAULT 30,
+    preco DECIMAL(10,2) DEFAULT 0,
     observacoes TEXT DEFAULT '',
     fonte TEXT DEFAULT 'dashboard',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

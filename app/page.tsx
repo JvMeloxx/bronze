@@ -30,16 +30,16 @@ export default function Home() {
                 Planos
               </Button>
             </Link>
-            <Link href="/login">
+            {/* <Link href="/login">
               <Button variant="outline" className="border-amber-300 hover:bg-amber-50 dark:border-amber-700 dark:hover:bg-amber-950 transition-all hover:scale-105">
                 Entrar
               </Button>
-            </Link>
+            </Link> 
             <Link href="/planos">
               <Button className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/40">
                 Começar Grátis
               </Button>
-            </Link>
+            </Link> */}
           </div>
         </nav>
       </header>
@@ -57,9 +57,9 @@ export default function Home() {
             Sistema completo para agendamentos, controle de clientes e gestão de sessões de bronzeamento. Simplifique sua rotina e aumente sua produtividade.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/planos">
+            <Link href="https://wa.me/556192415188" target="_blank">
               <Button size="lg" className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-lg shadow-amber-500/30 text-lg px-8 py-6 transition-all hover:scale-105 hover:shadow-xl hover:shadow-amber-500/40 active:scale-95">
-                Ver Planos
+                Saiba Mais 💬
               </Button>
             </Link>
             <Link href="/agendar">

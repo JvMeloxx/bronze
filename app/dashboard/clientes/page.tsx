@@ -23,37 +23,38 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { useClientes, useAgendamentos } from "@/lib/hooks"
+import { useClientesDB, useAgendamentosDB, Cliente } from "@/lib/hooks-supabase"
 import { useToast } from "@/components/ui/toast"
-import { Cliente, formatarData, getTipoPeleLabel } from "@/lib/data"
+import { formatarData, getTipoPeleLabel } from "@/lib/data"
 
 export default function ClientesPage() {
-    const { clientes, addCliente, updateCliente, deleteCliente, isLoading } = useClientes()
-    const { getAgendamentosByCliente } = useAgendamentos()
+    const { clientes, addCliente, updateCliente, deleteCliente, isLoading } = useClientesDB()
+    const { getAgendamentosByCliente } = useAgendamentosDB()
     const { addToast } = useToast()
 
     const [searchTerm, setSearchTerm] = useState("")
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingCliente, setEditingCliente] = useState<Cliente | null>(null)
     const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null)
+    const [isSaving, setIsSaving] = useState(false)
 
     // Form state
     const [formData, setFormData] = useState({
         nome: "",
         email: "",
         telefone: "",
-        tipoPele: "" as Cliente["tipoPele"] | "",
+        tipo_pele: "" as string,
         observacoes: ""
     })
 
     const filteredClientes = clientes.filter(c =>
         c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.telefone.includes(searchTerm)
+        (c.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.telefone || "").includes(searchTerm)
     )
 
     const resetForm = () => {
-        setFormData({ nome: "", email: "", telefone: "", tipoPele: "", observacoes: "" })
+        setFormData({ nome: "", email: "", telefone: "", tipo_pele: "", observacoes: "" })
         setEditingCliente(null)
     }
 
@@ -62,9 +63,9 @@ export default function ClientesPage() {
             setEditingCliente(cliente)
             setFormData({
                 nome: cliente.nome,
-                email: cliente.email,
-                telefone: cliente.telefone,
-                tipoPele: cliente.tipoPele,
+                email: cliente.email || "",
+                telefone: cliente.telefone || "",
+                tipo_pele: cliente.tipo_pele || "clara", // Default fallback
                 observacoes: cliente.observacoes || ""
             })
         } else {
@@ -73,39 +74,46 @@ export default function ClientesPage() {
         setIsDialogOpen(true)
     }
 
-    const handleSubmit = () => {
-        if (!formData.nome || !formData.email || !formData.telefone || !formData.tipoPele) {
-            addToast({ title: "Erro", description: "Preencha todos os campos obrigatórios", variant: "destructive" })
+    const handleSubmit = async () => {
+        if (!formData.nome || !formData.telefone || !formData.tipo_pele) {
+            addToast({ title: "Erro", description: "Nome, telefone e tipo de pele são obrigatórios", variant: "destructive" })
             return
         }
 
-        if (editingCliente) {
-            updateCliente(editingCliente.id, {
-                nome: formData.nome,
-                email: formData.email,
-                telefone: formData.telefone,
-                tipoPele: formData.tipoPele as Cliente["tipoPele"],
-                observacoes: formData.observacoes
-            })
-            addToast({ title: "Sucesso!", description: "Cliente atualizado com sucesso", variant: "success" })
-        } else {
-            addCliente({
-                nome: formData.nome,
-                email: formData.email,
-                telefone: formData.telefone,
-                tipoPele: formData.tipoPele as Cliente["tipoPele"],
-                observacoes: formData.observacoes
-            })
-            addToast({ title: "Sucesso!", description: "Cliente cadastrado com sucesso", variant: "success" })
+        setIsSaving(true)
+        try {
+            if (editingCliente) {
+                await updateCliente(editingCliente.id, {
+                    nome: formData.nome,
+                    email: formData.email,
+                    telefone: formData.telefone,
+                    tipo_pele: formData.tipo_pele,
+                    observacoes: formData.observacoes
+                })
+                addToast({ title: "Sucesso!", description: "Cliente atualizado com sucesso", variant: "success" })
+            } else {
+                await addCliente({
+                    nome: formData.nome,
+                    email: formData.email,
+                    telefone: formData.telefone,
+                    tipo_pele: formData.tipo_pele,
+                    observacoes: formData.observacoes
+                })
+                addToast({ title: "Sucesso!", description: "Cliente cadastrado com sucesso", variant: "success" })
+            }
+            setIsDialogOpen(false)
+            resetForm()
+        } catch (err) {
+            console.error(err)
+            addToast({ title: "Erro", description: "Falha ao salvar cliente", variant: "destructive" })
+        } finally {
+            setIsSaving(false)
         }
-
-        setIsDialogOpen(false)
-        resetForm()
     }
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (confirm("Tem certeza que deseja excluir este cliente?")) {
-            deleteCliente(id)
+            await deleteCliente(id)
             addToast({ title: "Cliente excluído", description: "O cliente foi removido do sistema" })
         }
     }
@@ -163,7 +171,7 @@ export default function ClientesPage() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="email">Email *</Label>
+                                <Label htmlFor="email">Email</Label>
                                 <Input
                                     id="email"
                                     type="email"
@@ -185,7 +193,7 @@ export default function ClientesPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Tipo de Pele *</Label>
-                                <Select value={formData.tipoPele} onValueChange={(v) => setFormData({ ...formData, tipoPele: v as Cliente["tipoPele"] })}>
+                                <Select value={formData.tipo_pele} onValueChange={(v) => setFormData({ ...formData, tipo_pele: v })}>
                                     <SelectTrigger className="border-amber-200 dark:border-amber-800">
                                         <SelectValue placeholder="Selecione o tipo de pele" />
                                     </SelectTrigger>
@@ -214,9 +222,10 @@ export default function ClientesPage() {
                             </Button>
                             <Button
                                 onClick={handleSubmit}
+                                disabled={isSaving}
                                 className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
                             >
-                                {editingCliente ? "Salvar" : "Cadastrar"}
+                                {isSaving ? "Salvando..." : editingCliente ? "Salvar" : "Cadastrar"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -248,7 +257,7 @@ export default function ClientesPage() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-sm text-muted-foreground">Email</p>
-                                        <p className="font-medium">{selectedCliente.email}</p>
+                                        <p className="font-medium">{selectedCliente.email || "-"}</p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-muted-foreground">Telefone</p>
@@ -256,11 +265,11 @@ export default function ClientesPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm text-muted-foreground">Tipo de Pele</p>
-                                        <p className="font-medium">{getTipoPeleLabel(selectedCliente.tipoPele)}</p>
+                                        <p className="font-medium">{getTipoPeleLabel(selectedCliente.tipo_pele as "clara" | "media" | "morena" | "negra")}</p>
                                     </div>
                                     <div>
                                         <p className="text-sm text-muted-foreground">Cliente desde</p>
-                                        <p className="font-medium">{formatarData(selectedCliente.dataCadastro)}</p>
+                                        <p className="font-medium">{formatarData(selectedCliente.created_at)}</p>
                                     </div>
                                 </div>
                                 {selectedCliente.observacoes && (
@@ -269,14 +278,7 @@ export default function ClientesPage() {
                                         <p className="font-medium">{selectedCliente.observacoes}</p>
                                     </div>
                                 )}
-                                {selectedCliente.sessoesRestantes !== undefined && selectedCliente.sessoesRestantes > 0 && (
-                                    <div className="p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg">
-                                        <p className="text-sm text-muted-foreground">Sessões Restantes</p>
-                                        <p className="text-2xl font-bold text-amber-600">
-                                            {selectedCliente.sessoesRestantes} sessões
-                                        </p>
-                                    </div>
-                                )}
+
                                 <div>
                                     <h4 className="font-semibold mb-2">Histórico de Agendamentos</h4>
                                     <div className="space-y-2 max-h-48 overflow-y-auto">
@@ -354,10 +356,7 @@ export default function ClientesPage() {
                             </CardHeader>
                             <CardContent>
                                 <div className="flex flex-wrap gap-2 mb-2">
-                                    <Badge variant="secondary">{getTipoPeleLabel(cliente.tipoPele)}</Badge>
-                                    {cliente.sessoesRestantes !== undefined && cliente.sessoesRestantes > 0 && (
-                                        <Badge variant="success">{cliente.sessoesRestantes} sessões</Badge>
-                                    )}
+                                    <Badge variant="secondary">{getTipoPeleLabel(cliente.tipo_pele as "clara" | "media" | "morena" | "negra")}</Badge>
                                 </div>
                                 <p className="text-sm text-muted-foreground">
                                     📞 {cliente.telefone}
@@ -376,18 +375,10 @@ export default function ClientesPage() {
                         <p className="text-sm text-muted-foreground">Total de Clientes</p>
                     </CardContent>
                 </Card>
-                <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-green-500/10 to-emerald-500/10">
-                    <CardContent className="p-4 text-center">
-                        <p className="text-3xl font-bold text-green-600">
-                            {clientes.filter(c => c.sessoesRestantes && c.sessoesRestantes > 0).length}
-                        </p>
-                        <p className="text-sm text-muted-foreground">Com Pacote Ativo</p>
-                    </CardContent>
-                </Card>
                 <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-blue-500/10 to-cyan-500/10">
                     <CardContent className="p-4 text-center">
                         <p className="text-3xl font-bold text-blue-600">
-                            {clientes.filter(c => c.tipoPele === "clara" || c.tipoPele === "media").length}
+                            {clientes.filter(c => c.tipo_pele === "clara" || c.tipo_pele === "media").length}
                         </p>
                         <p className="text-sm text-muted-foreground">Pele Clara/Média</p>
                     </CardContent>
@@ -398,7 +389,7 @@ export default function ClientesPage() {
                             {clientes.filter(c => {
                                 const thirtyDaysAgo = new Date()
                                 thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-                                return new Date(c.dataCadastro) >= thirtyDaysAgo
+                                return new Date(c.created_at) >= thirtyDaysAgo
                             }).length}
                         </p>
                         <p className="text-sm text-muted-foreground">Novos (30 dias)</p>

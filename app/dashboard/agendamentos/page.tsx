@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,14 +24,23 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAgendamentos, useClientes } from "@/lib/hooks"
+import { useAgendamentosDB, useClientesDB, useServicosDB, Agendamento } from "@/lib/hooks-supabase"
 import { useToast } from "@/components/ui/toast"
-import { Agendamento, formatarData, getTipoLabel, getStatusColor } from "@/lib/data"
+import { formatarData, getStatusColor } from "@/lib/data"
 import { enviarConfirmacaoAgendamento, enviarLembreteAgendamento } from "@/lib/zapi"
 
 export default function AgendamentosPage() {
-    const { agendamentos, addAgendamento, updateAgendamento, deleteAgendamento, isLoading } = useAgendamentos()
-    const { clientes } = useClientes()
+    const {
+        agendamentos,
+        addAgendamento,
+        updateAgendamento,
+        deleteAgendamento,
+        isLoading
+    } = useAgendamentosDB()
+
+    const { clientes } = useClientesDB()
+    const { servicos } = useServicosDB()
+
     const { addToast } = useToast()
     const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null)
 
@@ -40,13 +49,14 @@ export default function AgendamentosPage() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null)
     const [activeTab, setActiveTab] = useState("dia")
+    const [isSaving, setIsSaving] = useState(false)
 
     // Form state
     const [formData, setFormData] = useState({
-        clienteId: "",
+        cliente_id: "",
         data: new Date().toISOString().split("T")[0],
         horario: "",
-        tipo: "" as Agendamento["tipo"] | "",
+        servico_id: "",
         duracao: 30,
         observacoes: ""
     })
@@ -73,10 +83,10 @@ export default function AgendamentosPage() {
 
     const resetForm = () => {
         setFormData({
-            clienteId: "",
+            cliente_id: "",
             data: selectedDate,
             horario: "",
-            tipo: "",
+            servico_id: "",
             duracao: 30,
             observacoes: ""
         })
@@ -86,12 +96,20 @@ export default function AgendamentosPage() {
     const handleOpenDialog = (agendamento?: Agendamento) => {
         if (agendamento) {
             setEditingAgendamento(agendamento)
+            // Tentar encontrar o serviço correspondente pelo ID ou Nome
+            let servicoId = agendamento.servico_id || ""
+            if (!servicoId) {
+                // Tenta achar pelo nome se não tiver ID
+                const s = servicos.find(s => s.nome === agendamento.servico_nome)
+                if (s) servicoId = s.id
+            }
+
             setFormData({
-                clienteId: agendamento.clienteId,
+                cliente_id: agendamento.cliente_id || "",
                 data: agendamento.data,
                 horario: agendamento.horario,
-                tipo: agendamento.tipo,
-                duracao: agendamento.duracao,
+                servico_id: servicoId,
+                duracao: agendamento.duracao || 30,
                 observacoes: agendamento.observacoes || ""
             })
         } else {
@@ -100,49 +118,66 @@ export default function AgendamentosPage() {
         setIsDialogOpen(true)
     }
 
-    const handleSubmit = () => {
-        if (!formData.clienteId || !formData.data || !formData.horario || !formData.tipo) {
+    const handleSubmit = async () => {
+        if (!formData.cliente_id || !formData.data || !formData.horario || !formData.servico_id) {
             addToast({ title: "Erro", description: "Preencha todos os campos obrigatórios", variant: "destructive" })
             return
         }
 
-        const cliente = clientes.find(c => c.id === formData.clienteId)
+        const cliente = clientes.find(c => c.id === formData.cliente_id)
         if (!cliente) {
             addToast({ title: "Erro", description: "Cliente não encontrado", variant: "destructive" })
             return
         }
 
-        if (editingAgendamento) {
-            updateAgendamento(editingAgendamento.id, {
-                clienteId: formData.clienteId,
-                clienteNome: cliente.nome,
-                data: formData.data,
-                horario: formData.horario,
-                tipo: formData.tipo as Agendamento["tipo"],
-                duracao: formData.duracao,
-                observacoes: formData.observacoes
-            })
-            addToast({ title: "Sucesso!", description: "Agendamento atualizado", variant: "success" })
-        } else {
-            addAgendamento({
-                clienteId: formData.clienteId,
-                clienteNome: cliente.nome,
-                data: formData.data,
-                horario: formData.horario,
-                tipo: formData.tipo as Agendamento["tipo"],
-                status: "pendente",
-                duracao: formData.duracao,
-                observacoes: formData.observacoes
-            })
-            addToast({ title: "Sucesso!", description: "Agendamento criado", variant: "success" })
-        }
+        const servico = servicos.find(s => s.id === formData.servico_id)
+        const servicoNome = servico?.nome || "Serviço"
 
-        setIsDialogOpen(false)
-        resetForm()
+        setIsSaving(true)
+
+        try {
+            if (editingAgendamento) {
+                await updateAgendamento(editingAgendamento.id, {
+                    cliente_id: formData.cliente_id,
+                    cliente_nome: cliente.nome,
+                    data: formData.data,
+                    horario: formData.horario,
+                    servico_id: formData.servico_id,
+                    servico_nome: servicoNome,
+                    duracao: formData.duracao,
+                    observacoes: formData.observacoes
+                })
+                addToast({ title: "Sucesso!", description: "Agendamento atualizado", variant: "success" })
+            } else {
+                await addAgendamento({
+                    cliente_id: formData.cliente_id,
+                    cliente_nome: cliente.nome,
+                    telefone: cliente.telefone,
+                    email: cliente.email,
+                    data: formData.data,
+                    horario: formData.horario,
+                    servico_id: formData.servico_id,
+                    servico_nome: servicoNome,
+                    status: "pendente",
+                    duracao: formData.duracao,
+                    preco: servico?.preco || 0,
+                    observacoes: formData.observacoes,
+                    fonte: "dashboard"
+                })
+                addToast({ title: "Sucesso!", description: "Agendamento criado", variant: "success" })
+            }
+            setIsDialogOpen(false)
+            resetForm()
+        } catch (err) {
+            console.error(err)
+            addToast({ title: "Erro", description: "Falha ao salvar", variant: "destructive" })
+        } finally {
+            setIsSaving(false)
+        }
     }
 
-    const handleStatusChange = (id: string, newStatus: Agendamento["status"]) => {
-        updateAgendamento(id, { status: newStatus })
+    const handleStatusChange = async (id: string, newStatus: Agendamento["status"]) => {
+        await updateAgendamento(id, { status: newStatus })
         addToast({
             title: "Status atualizado",
             description: `Agendamento marcado como ${newStatus}`,
@@ -150,19 +185,30 @@ export default function AgendamentosPage() {
         })
     }
 
-    const handleDelete = (id: string) => {
+    const handleDelete = async (id: string) => {
         if (confirm("Tem certeza que deseja excluir este agendamento?")) {
-            deleteAgendamento(id)
+            await deleteAgendamento(id)
             addToast({ title: "Agendamento excluído" })
         }
     }
 
     const handleEnviarWhatsApp = async (agendamento: Agendamento, tipo: "lembrete" | "confirmacao") => {
-        const cliente = clientes.find(c => c.id === agendamento.clienteId)
-        if (!cliente?.telefone) {
+        // Busca do telefone: primeiro no agendamento, depois tenta buscar cliente se não tiver
+        let telefone = agendamento.telefone
+        let nome = agendamento.cliente_nome
+
+        if (!telefone && agendamento.cliente_id) {
+            const cliente = clientes.find(c => c.id === agendamento.cliente_id)
+            if (cliente) {
+                telefone = cliente.telefone
+                nome = cliente.nome
+            }
+        }
+
+        if (!telefone) {
             addToast({
                 title: "Erro",
-                description: "Cliente não tem telefone cadastrado",
+                description: "Telefone não encontrado para este agendamento",
                 variant: "destructive"
             })
             return
@@ -171,17 +217,16 @@ export default function AgendamentosPage() {
         setSendingWhatsApp(agendamento.id)
 
         try {
-            const tipoServico = getTipoLabel(agendamento.tipo)
             const dataFormatada = formatarData(agendamento.data)
 
             const result = tipo === "lembrete"
-                ? await enviarLembreteAgendamento(cliente.telefone, cliente.nome, dataFormatada, agendamento.horario, tipoServico)
-                : await enviarConfirmacaoAgendamento(cliente.telefone, cliente.nome, dataFormatada, agendamento.horario, tipoServico)
+                ? await enviarLembreteAgendamento(telefone, nome, dataFormatada, agendamento.horario, agendamento.servico_nome)
+                : await enviarConfirmacaoAgendamento(telefone, nome, dataFormatada, agendamento.horario, agendamento.servico_nome, agendamento.id)
 
             if (result.success) {
                 addToast({
                     title: "WhatsApp enviado! ✅",
-                    description: `${tipo === "lembrete" ? "Lembrete" : "Confirmação"} enviado para ${cliente.nome}`,
+                    description: `${tipo === "lembrete" ? "Lembrete" : "Confirmação"} enviado para ${nome}`,
                     variant: "success"
                 })
             } else {
@@ -204,11 +249,13 @@ export default function AgendamentosPage() {
 
 
     const getDayName = (dateStr: string) => {
+        if (!dateStr) return ""
         const date = new Date(dateStr + "T00:00:00")
         return date.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")
     }
 
     const getDayNumber = (dateStr: string) => {
+        if (!dateStr) return ""
         return new Date(dateStr + "T00:00:00").getDate()
     }
 
@@ -263,7 +310,7 @@ export default function AgendamentosPage() {
                         <div className="space-y-4 py-4">
                             <div className="space-y-2">
                                 <Label>Cliente *</Label>
-                                <Select value={formData.clienteId} onValueChange={(v) => setFormData({ ...formData, clienteId: v })}>
+                                <Select value={formData.cliente_id} onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}>
                                     <SelectTrigger className="border-amber-200 dark:border-amber-800">
                                         <SelectValue placeholder="Selecione o cliente" />
                                     </SelectTrigger>
@@ -271,6 +318,11 @@ export default function AgendamentosPage() {
                                         {clientes.map(c => (
                                             <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>
                                         ))}
+                                        {clientes.length === 0 && (
+                                            <div className="p-2 text-sm text-center text-muted-foreground">
+                                                Nenhum cliente cadastrado
+                                            </div>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -301,14 +353,26 @@ export default function AgendamentosPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label>Tipo de Serviço *</Label>
-                                <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v as Agendamento["tipo"] })}>
+                                <Select value={formData.servico_id} onValueChange={(v) => {
+                                    const s = servicos.find(serv => serv.id === v)
+                                    setFormData({
+                                        ...formData,
+                                        servico_id: v,
+                                        duracao: s?.duracao || 30
+                                    })
+                                }}>
                                     <SelectTrigger className="border-amber-200 dark:border-amber-800">
                                         <SelectValue placeholder="Selecione o serviço" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="natural">Bronzeamento Natural</SelectItem>
-                                        <SelectItem value="spray">Bronzeamento Spray</SelectItem>
-                                        <SelectItem value="manutencao">Manutenção</SelectItem>
+                                        {servicos.filter(s => s.ativo).map(s => (
+                                            <SelectItem key={s.id} value={s.id}>{s.nome} ({s.duracao} min)</SelectItem>
+                                        ))}
+                                        {servicos.length === 0 && (
+                                            <div className="p-2 text-sm text-center text-muted-foreground">
+                                                Nenhum serviço cadastrado. Vá em Serviços.
+                                            </div>
+                                        )}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -339,9 +403,10 @@ export default function AgendamentosPage() {
                             </Button>
                             <Button
                                 onClick={handleSubmit}
+                                disabled={isSaving}
                                 className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
                             >
-                                {editingAgendamento ? "Salvar" : "Agendar"}
+                                {isSaving ? "Salvando..." : editingAgendamento ? "Salvar" : "Agendar"}
                             </Button>
                         </DialogFooter>
                     </DialogContent>
@@ -420,9 +485,9 @@ export default function AgendamentosPage() {
                                                     </span>
                                                 </div>
                                                 <div className="flex-1">
-                                                    <p className="font-medium">{ag.clienteNome}</p>
+                                                    <p className="font-medium">{ag.cliente_nome}</p>
                                                     <p className="text-sm text-muted-foreground">
-                                                        {getTipoLabel(ag.tipo)}
+                                                        {ag.servico_nome}
                                                     </p>
                                                 </div>
                                             </div>
@@ -460,6 +525,7 @@ export default function AgendamentosPage() {
                                                     variant="ghost"
                                                     onClick={() => handleDelete(ag.id)}
                                                     className="hover:text-red-600"
+                                                    title="Excluir"
                                                 >
                                                     🗑️
                                                 </Button>
@@ -508,7 +574,7 @@ export default function AgendamentosPage() {
                                                                 {ag.status}
                                                             </span>
                                                         </div>
-                                                        <p className="font-medium truncate">{ag.clienteNome}</p>
+                                                        <p className="font-medium truncate">{ag.cliente_nome}</p>
                                                     </div>
                                                 ))}
                                             {agendamentosPorData[date].length > 4 && (
@@ -549,9 +615,9 @@ export default function AgendamentosPage() {
                                                         </span>
                                                     </div>
                                                     <div className="flex-1">
-                                                        <p className="font-medium">{ag.clienteNome}</p>
+                                                        <p className="font-medium">{ag.cliente_nome}</p>
                                                         <p className="text-sm text-muted-foreground">
-                                                            {getTipoLabel(ag.tipo)}
+                                                            {ag.servico_nome}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -564,7 +630,7 @@ export default function AgendamentosPage() {
                                                         variant="ghost"
                                                         onClick={() => handleDelete(ag.id)}
                                                         className="hover:text-red-600"
-                                                        title="Excluir agendamento"
+                                                        title="Excluir"
                                                     >
                                                         🗑️
                                                     </Button>

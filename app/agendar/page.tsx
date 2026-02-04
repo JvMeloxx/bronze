@@ -214,7 +214,7 @@ export default function AgendarPage() {
             }
 
             // 2. Criar Agendamento
-            const { error: bookingError } = await supabase
+            const { data: booking, error: bookingError } = await supabase
                 .from("agendamentos")
                 .insert({
                     studio_id: studio.id,
@@ -230,6 +230,8 @@ export default function AgendarPage() {
                     observacoes: formData.observacoes,
                     fonte: "website"
                 })
+                .select()
+                .single()
 
             if (bookingError) {
                 throw new Error("Erro ao criar agendamento: " + bookingError.message)
@@ -246,6 +248,7 @@ export default function AgendarPage() {
                         dataFormatada,
                         selectedHorario,
                         servicoNome,
+                        booking.id, // ID para botões de confirmação
                         formData.observacoes
                     ).catch(console.error)
                 }
@@ -256,7 +259,8 @@ export default function AgendarPage() {
                     formData.nome,
                     dataFormatada,
                     selectedHorario,
-                    servicoNome
+                    servicoNome,
+                    booking.id // Passando ID para link de reagendamento
                 ).catch(console.error)
             }
 

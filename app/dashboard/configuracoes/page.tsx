@@ -21,77 +21,74 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-
-// Tipos para configurações
-interface StudioConfig {
-    nomeEstudio: string
-    ownerPhone: string
-    notificationsEnabled: boolean
-    sendToOwnerOnBooking: boolean
-    sendToClientOnBooking: boolean
-    sendReminderToClient: boolean
-    // PIX Config
-    pixEnabled: boolean
-    pixKey: string
-    pixKeyType: "telefone" | "cpf" | "email" | "aleatoria"
-    establishmentName: string
-    signalPercentage: number
-    sessionBaseValue: number
-    paymentPolicy: string
-
-}
-
-const defaultPaymentPolicy = `IMPORTANTE: Para confirmar o seu atendimento, é necessário realizar o pagamento de 50% do valor como sinal no ato do agendamento.
-
-• Caso o sinal não seja feito, o horário será cancelado pelo sistema.
-• O sinal é não reembolsável em caso de desistência ou não comparecimento.
-• A cliente tem direito a UMA remarcação, desde que avisado com antecedência.
-• Após essa remarcação, caso haja nova necessidade de alterar ou cancelar de última hora, será necessário realizar um novo sinal.
-
-Agradeço a compreensão e o respeito pelo meu trabalho e pela agenda. 🤎`
-
-const defaultConfig: StudioConfig = {
-    nomeEstudio: "",
-    ownerPhone: "",
-    notificationsEnabled: true,
-    sendToOwnerOnBooking: true,
-    sendToClientOnBooking: true,
-    sendReminderToClient: true,
-    // PIX Config
-    pixEnabled: true,
-    pixKey: "",
-    pixKeyType: "telefone",
-    establishmentName: "",
-    signalPercentage: 50,
-    sessionBaseValue: 120,
-    paymentPolicy: defaultPaymentPolicy,
-
-}
+import { useStudioConfig } from "@/lib/hooks-supabase"
+import { useToast } from "@/components/ui/toast"
 
 export default function ConfiguracoesPage() {
-    const [config, setConfig] = useState<StudioConfig>(defaultConfig)
+    const { config, updateConfig, refreshConfig } = useStudioConfig()
+    const { addToast } = useToast()
+
     const [saved, setSaved] = useState(false)
     const [testing, setTesting] = useState(false)
     const [testResult, setTestResult] = useState<"success" | "error" | null>(null)
 
-    // Carregar configurações do localStorage
+    // Local state for form fields to handle inputs before saving
+    // Initialized with empty/default, will populate via useEffect when config loads
+    const [formData, setFormData] = useState({
+        owner_phone: "",
+        notifications_enabled: true,
+        pix_enabled: true,
+        pix_key: "",
+        pix_key_type: "telefone" as "telefone" | "cpf" | "email" | "aleatoria",
+        establishment_name: "",
+        signal_percentage: 50,
+        payment_policy: "",
+    })
+
+    // Populate form data when config is loaded
     useEffect(() => {
-        const savedConfig = localStorage.getItem("sunsync_config")
-        if (savedConfig) {
-            setConfig(JSON.parse(savedConfig))
+        if (config) {
+            setFormData({
+                owner_phone: config.owner_phone || "",
+                notifications_enabled: config.notifications_enabled ?? true,
+                pix_enabled: config.pix_enabled ?? true,
+                pix_key: config.pix_key || "",
+                pix_key_type: (config.pix_key_type as any) || "telefone",
+                establishment_name: config.establishment_name || "",
+                signal_percentage: config.signal_percentage || 50,
+                payment_policy: config.payment_policy || "",
+            })
         }
-    }, [])
+    }, [config])
 
     // Salvar configurações
-    const handleSave = () => {
-        localStorage.setItem("sunsync_config", JSON.stringify(config))
-        setSaved(true)
-        setTimeout(() => setSaved(false), 3000)
+    const handleSave = async () => {
+        if (!updateConfig) return
+
+        const success = await updateConfig({
+            owner_phone: formData.owner_phone,
+            notifications_enabled: formData.notifications_enabled,
+            pix_enabled: formData.pix_enabled,
+            pix_key: formData.pix_key,
+            pix_key_type: formData.pix_key_type,
+            establishment_name: formData.establishment_name,
+            signal_percentage: formData.signal_percentage,
+            payment_policy: formData.payment_policy
+        })
+
+        if (success) {
+            setSaved(true)
+            addToast({ title: "Configurações salvas!" })
+            setTimeout(() => setSaved(false), 3000)
+            refreshConfig()
+        } else {
+            addToast({ title: "Erro ao salvar", variant: "destructive" })
+        }
     }
 
     // Testar conexão Z-API
     const handleTestConnection = async () => {
-        if (!config.ownerPhone) {
+        if (!formData.owner_phone) {
             alert("Digite um número de telefone primeiro!")
             return
         }
@@ -134,12 +131,12 @@ export default function ConfiguracoesPage() {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
             <div>
                 <h1 className="text-3xl font-bold tracking-tight">⚙️ Configurações</h1>
                 <p className="text-muted-foreground">
-                    Configure as notificações WhatsApp do seu studio
+                    Configure as notificações WhatsApp e pagamentos do seu studio
                 </p>
             </div>
 
@@ -175,7 +172,7 @@ export default function ConfiguracoesPage() {
                                     ? `${window.location.origin}/agendar`
                                     : "https://seusite.com/agendar"
                                 navigator.clipboard.writeText(link)
-                                alert("Link copiado! 📋")
+                                addToast({ title: "Link copiado! 📋" })
                             }}
                             className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-6"
                         >
@@ -200,40 +197,6 @@ export default function ConfiguracoesPage() {
                             <p className="text-sm font-medium">Stories</p>
                             <p className="text-xs text-muted-foreground">Use o link nos stories</p>
                         </div>
-                    </div>
-
-                    {/* Share buttons */}
-                    <div className="flex flex-wrap gap-2 pt-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                const link = typeof window !== "undefined"
-                                    ? `${window.location.origin}/agendar`
-                                    : ""
-                                const text = "Agende seu bronzeamento! ☀️"
-                                window.open(`https://wa.me/?text=${encodeURIComponent(text + " " + link)}`, "_blank")
-                            }}
-                            className="border-green-500 text-green-600 hover:bg-green-50"
-                        >
-                            💚 Compartilhar no WhatsApp
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                                if (navigator.share) {
-                                    navigator.share({
-                                        title: "Agende seu bronzeamento!",
-                                        text: "Agende seu horário no SunSync ☀️",
-                                        url: typeof window !== "undefined" ? `${window.location.origin}/agendar` : ""
-                                    })
-                                }
-                            }}
-                            className="border-blue-500 text-blue-600 hover:bg-blue-50"
-                        >
-                            📤 Compartilhar
-                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -260,9 +223,9 @@ export default function ConfiguracoesPage() {
                             </p>
                         </div>
                         <Switch
-                            checked={config.notificationsEnabled}
+                            checked={formData.notifications_enabled}
                             onCheckedChange={(checked) =>
-                                setConfig({ ...config, notificationsEnabled: checked })
+                                setFormData({ ...formData, notifications_enabled: checked })
                             }
                         />
                     </div>
@@ -276,11 +239,11 @@ export default function ConfiguracoesPage() {
                             <Input
                                 id="phone"
                                 type="tel"
-                                value={formatPhone(config.ownerPhone)}
+                                value={formatPhone(formData.owner_phone)}
                                 onChange={(e) =>
-                                    setConfig({
-                                        ...config,
-                                        ownerPhone: e.target.value.replace(/\D/g, ""),
+                                    setFormData({
+                                        ...formData,
+                                        owner_phone: e.target.value.replace(/\D/g, ""),
                                     })
                                 }
                                 placeholder="(11) 99999-9999"
@@ -289,7 +252,7 @@ export default function ConfiguracoesPage() {
                             <Button
                                 variant="outline"
                                 onClick={handleTestConnection}
-                                disabled={testing || !config.ownerPhone}
+                                disabled={testing || !formData.owner_phone}
                             >
                                 {testing ? "⏳" : "🔗"} Testar
                             </Button>
@@ -302,62 +265,9 @@ export default function ConfiguracoesPage() {
                         )}
                         {testResult === "error" && (
                             <p className="text-sm text-red-600">
-                                ❌ Erro na conexão. Verifique se o Z-API está conectado.
+                                ❌ Erro na conexão. Verifique se o Z-API está conectado e as variáveis de ambiente estão corretas.
                             </p>
                         )}
-                    </div>
-
-                    {/* Opções de Notificação */}
-                    <div className="space-y-4 pt-4 border-t border-amber-100 dark:border-amber-900">
-                        <h3 className="font-medium">Quando enviar notificações:</h3>
-
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium">Novo agendamento (para você)</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Receba quando um cliente agendar
-                                </p>
-                            </div>
-                            <Switch
-                                checked={config.sendToOwnerOnBooking}
-                                onCheckedChange={(checked) =>
-                                    setConfig({ ...config, sendToOwnerOnBooking: checked })
-                                }
-                                disabled={!config.notificationsEnabled}
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium">Confirmação (para cliente)</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Enviar confirmação ao cliente após agendar
-                                </p>
-                            </div>
-                            <Switch
-                                checked={config.sendToClientOnBooking}
-                                onCheckedChange={(checked) =>
-                                    setConfig({ ...config, sendToClientOnBooking: checked })
-                                }
-                                disabled={!config.notificationsEnabled}
-                            />
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="font-medium">Lembrete 1 dia antes</p>
-                                <p className="text-sm text-muted-foreground">
-                                    Lembrar cliente com cuidados pré-sessão
-                                </p>
-                            </div>
-                            <Switch
-                                checked={config.sendReminderToClient}
-                                onCheckedChange={(checked) =>
-                                    setConfig({ ...config, sendReminderToClient: checked })
-                                }
-                                disabled={!config.notificationsEnabled}
-                            />
-                        </div>
                     </div>
 
                     {/* Botão Salvar */}
@@ -392,9 +302,9 @@ export default function ConfiguracoesPage() {
                             </p>
                         </div>
                         <Switch
-                            checked={config.pixEnabled}
+                            checked={formData.pix_enabled}
                             onCheckedChange={(checked) =>
-                                setConfig({ ...config, pixEnabled: checked })
+                                setFormData({ ...formData, pix_enabled: checked })
                             }
                         />
                     </div>
@@ -404,13 +314,13 @@ export default function ConfiguracoesPage() {
                         <Label htmlFor="establishmentName">Nome do Estabelecimento</Label>
                         <Input
                             id="establishmentName"
-                            value={config.establishmentName}
+                            value={formData.establishment_name}
                             onChange={(e) =>
-                                setConfig({ ...config, establishmentName: e.target.value })
+                                setFormData({ ...formData, establishment_name: e.target.value })
                             }
                             placeholder="Ex: Studio Sol e Bronze"
                             className="border-green-200 dark:border-green-800"
-                            disabled={!config.pixEnabled}
+                            disabled={!formData.pix_enabled}
                         />
                     </div>
 
@@ -418,9 +328,9 @@ export default function ConfiguracoesPage() {
                     <div className="space-y-2">
                         <Label>Tipo de Chave PIX</Label>
                         <Select
-                            value={config.pixKeyType}
+                            value={formData.pix_key_type}
                             onValueChange={(value) =>
-                                setConfig({ ...config, pixKeyType: value as "telefone" | "cpf" | "email" | "aleatoria" })
+                                setFormData({ ...formData, pix_key_type: value as "telefone" | "cpf" | "email" | "aleatoria" })
                             }
                         >
                             <SelectTrigger className="border-green-200 dark:border-green-800">
@@ -440,18 +350,18 @@ export default function ConfiguracoesPage() {
                         <Label htmlFor="pixKey">Chave PIX</Label>
                         <Input
                             id="pixKey"
-                            value={config.pixKey}
+                            value={formData.pix_key}
                             onChange={(e) =>
-                                setConfig({ ...config, pixKey: e.target.value })
+                                setFormData({ ...formData, pix_key: e.target.value })
                             }
                             placeholder={
-                                config.pixKeyType === "telefone" ? "(61) 99999-9999" :
-                                    config.pixKeyType === "cpf" ? "000.000.000-00" :
-                                        config.pixKeyType === "email" ? "email@exemplo.com" :
+                                formData.pix_key_type === "telefone" ? "(61) 99999-9999" :
+                                    formData.pix_key_type === "cpf" ? "000.000.000-00" :
+                                        formData.pix_key_type === "email" ? "email@exemplo.com" :
                                             "sua-chave-aleatoria"
                             }
                             className="border-green-200 dark:border-green-800"
-                            disabled={!config.pixEnabled}
+                            disabled={!formData.pix_enabled}
                         />
                     </div>
 
@@ -461,13 +371,13 @@ export default function ConfiguracoesPage() {
                         <Input
                             id="signalPercent"
                             type="number"
-                            value={config.signalPercentage}
+                            value={formData.signal_percentage}
                             onChange={(e) =>
-                                setConfig({ ...config, signalPercentage: Number(e.target.value) })
+                                setFormData({ ...formData, signal_percentage: Number(e.target.value) })
                             }
                             placeholder="50"
                             className="border-green-200 dark:border-green-800"
-                            disabled={!config.pixEnabled}
+                            disabled={!formData.pix_enabled}
                         />
                         <p className="text-xs text-muted-foreground">
                             O valor do sinal será calculado com base no preço do serviço selecionado pelo cliente
@@ -479,13 +389,13 @@ export default function ConfiguracoesPage() {
                         <Label htmlFor="paymentPolicy">Política de Pagamento/Cancelamento</Label>
                         <Textarea
                             id="paymentPolicy"
-                            value={config.paymentPolicy}
+                            value={formData.payment_policy}
                             onChange={(e) =>
-                                setConfig({ ...config, paymentPolicy: e.target.value })
+                                setFormData({ ...formData, payment_policy: e.target.value })
                             }
                             rows={8}
                             className="border-green-200 dark:border-green-800 text-sm"
-                            disabled={!config.pixEnabled}
+                            disabled={!formData.pix_enabled}
                         />
                         <p className="text-xs text-muted-foreground">
                             Este texto será exibido para as clientes na página de confirmação
@@ -502,8 +412,6 @@ export default function ConfiguracoesPage() {
                     </Button>
                 </CardContent>
             </Card>
-
-
 
             {/* Preview de Mensagens */}
             <Card className="border-amber-200 dark:border-amber-800">
