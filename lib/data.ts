@@ -55,6 +55,7 @@ export function getTipoLabel(tipo: string) {
     return labels[tipo] || tipo
 }
 
+
 export function getStatusColor(status: string) {
     switch (status) {
         case "confirmado":
@@ -66,4 +67,14 @@ export function getStatusColor(status: string) {
         default:
             return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
     }
+}
+
+export function getTipoPeleLabel(tipo: string) {
+    const labels: Record<string, string> = {
+        clara: "Pele Clara",
+        media: "Pele Média",
+        morena: "Pele Morena",
+        negra: "Pele Negra"
+    }
+    return labels[tipo] || tipo
 }
