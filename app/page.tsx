@@ -62,7 +62,7 @@ export default function Home() {
                 Saiba Mais 💬
               </Button>
             </Link>
-            <Link href="/agendar">
+            <Link href="/demo">
               <Button size="lg" variant="outline" className="border-amber-300 hover:bg-amber-50 dark:border-amber-700 dark:hover:bg-amber-950 text-lg px-8 py-6 transition-all hover:scale-105 active:scale-95">
                 Ver Demo
               </Button>
