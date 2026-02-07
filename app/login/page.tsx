@@ -151,6 +151,16 @@ export default function LoginPage() {
                                 className="border-amber-200 dark:border-amber-800"
                                 disabled={loading}
                             />
+                            {isLogin && (
+                                <div className="text-right">
+                                    <Link
+                                        href="/login/esqueci-senha"
+                                        className="text-xs text-muted-foreground hover:text-amber-600"
+                                    >
+                                        Esqueceu a senha?
+                                    </Link>
+                                </div>
+                            )}
                         </div>
 
                         {!isLogin && (
