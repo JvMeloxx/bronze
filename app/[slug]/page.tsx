@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,6 +13,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import {
     Select,
@@ -45,6 +47,8 @@ interface StudioPublicConfig {
 }
 
 export default function AgendarPage() {
+    const params = useParams()
+    const slug = params.slug as string
     const supabase = createClient()
     const [step, setStep] = useState(1)
     const [weather, setWeather] = useState<WeatherDay[]>([])
@@ -81,21 +85,25 @@ export default function AgendarPage() {
     // 2. Carregar Dados do Studio e Serviços
     useEffect(() => {
         async function loadStudioData() {
+            if (!slug) return
+
             setLoadingData(true)
             try {
-                // Buscar primeiro studio ativo (MVP: assume só 1 dono)
+                // Buscar studio pelo SLUG
                 const { data: studios, error: studioError } = await supabase
                     .from("studios")
                     .select("*")
+                    .eq("slug", slug)
                     .eq("ativo", true)
-                    .limit(1)
+                    .single()
 
-                if (studioError || !studios || studios.length === 0) {
+                if (studioError || !studios) {
                     console.error("Erro ao buscar studio:", studioError)
+                    setStudio(null)
                     return
                 }
 
-                const currentStudio = studios[0]
+                const currentStudio = studios
                 setStudio({
                     id: currentStudio.id,
                     nome_estudio: currentStudio.nome_estudio,
@@ -108,8 +116,8 @@ export default function AgendarPage() {
                     payment_policy: currentStudio.payment_policy || "",
                     notifications_enabled: currentStudio.notifications_enabled ?? false,
                     owner_phone: currentStudio.owner_phone || "",
-                    send_to_owner: true, // Default
-                    send_to_client: true // Default
+                    send_to_owner: true,
+                    send_to_client: true
                 })
 
                 // Buscar serviços deste studio
@@ -129,7 +137,7 @@ export default function AgendarPage() {
             }
         }
         loadStudioData()
-    }, [supabase])
+    }, [supabase, slug])
 
     // Horários disponíveis (9h às 17h)
     const horarios = [
@@ -260,14 +268,15 @@ export default function AgendarPage() {
                     dataFormatada,
                     selectedHorario,
                     servicoNome,
-                    booking.id // Passando ID para link de reagendamento
+                    booking.id, // Passando ID para link de reagendamento
+                    slug
                 ).catch(console.error)
             }
 
             // 4. Redirecionar Sucesso com Params PIX
             const precoServico = servicoSelecionado?.preco || 0
 
-            let successUrl = `/agendar/sucesso?data=${selectedDate}&horario=${selectedHorario}&nome=${encodeURIComponent(formData.nome)}&servico=${encodeURIComponent(servicoNome)}&preco=${precoServico}`
+            let successUrl = `/${slug}/sucesso?data=${selectedDate}&horario=${selectedHorario}&nome=${encodeURIComponent(formData.nome)}&servico=${encodeURIComponent(servicoNome)}&preco=${precoServico}`
 
             if (studio.pix_enabled && studio.pix_key) {
                 successUrl += `&pixEnabled=true`
@@ -356,9 +365,16 @@ export default function AgendarPage() {
                 </div>
 
                 {loadingData && (
-                    <div className="text-center py-12">
-                        <div className="h-10 w-10 rounded-full border-4 border-amber-500 border-t-transparent animate-spin mx-auto mb-4"></div>
-                        <p className="text-muted-foreground">Carregando disponibilidade...</p>
+                    <div className="space-y-8 animate-in fade-in duration-500">
+                        {/* Weekly Calendar Skeleton */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                            {Array.from({ length: 7 }).map((_, i) => (
+                                <Skeleton key={i} className="h-32 w-full rounded-xl" />
+                            ))}
+                        </div>
+
+                        {/* Selected Date/Card Skeleton */}
+                        <Skeleton className="h-48 w-full rounded-xl" />
                     </div>
                 )}
 

@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { useClientesDB, useAgendamentosDB, Cliente } from "@/lib/hooks-supabase"
 import { useToast } from "@/components/ui/toast"
-import { formatarData, getTipoPeleLabel } from "@/lib/data"
+import { formatarData, getTipoPeleLabel } from "@/lib/utils"
 
 export default function ClientesPage() {
     const { clientes, addCliente, updateCliente, deleteCliente, isLoading } = useClientesDB()

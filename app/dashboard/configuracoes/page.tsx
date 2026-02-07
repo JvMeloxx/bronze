@@ -43,6 +43,7 @@ export default function ConfiguracoesPage() {
         establishment_name: "",
         signal_percentage: 50,
         payment_policy: "",
+        slug: "", // Novo campo
     })
 
     // Populate form data when config is loaded
@@ -57,6 +58,7 @@ export default function ConfiguracoesPage() {
                 establishment_name: config.establishment_name || "",
                 signal_percentage: config.signal_percentage || 50,
                 payment_policy: config.payment_policy || "",
+                slug: config.slug || "",
             })
         }
     }, [config])
@@ -73,7 +75,8 @@ export default function ConfiguracoesPage() {
             pix_key_type: formData.pix_key_type,
             establishment_name: formData.establishment_name,
             signal_percentage: formData.signal_percentage,
-            payment_policy: formData.payment_policy
+            payment_policy: formData.payment_policy,
+            slug: formData.slug
         })
 
         if (success) {
@@ -159,25 +162,46 @@ export default function ConfiguracoesPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    {/* Link Display */}
-                    <div className="flex gap-2">
-                        <Input
-                            readOnly
-                            value={typeof window !== "undefined" ? `${window.location.origin}/agendar` : "https://seusite.com/agendar"}
-                            className="text-lg font-mono bg-white dark:bg-zinc-900 border-amber-300 dark:border-amber-700"
-                        />
-                        <Button
-                            onClick={() => {
-                                const link = typeof window !== "undefined"
-                                    ? `${window.location.origin}/agendar`
-                                    : "https://seusite.com/agendar"
-                                navigator.clipboard.writeText(link)
-                                addToast({ title: "Link copiado! 📋" })
-                            }}
-                            className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-6"
-                        >
-                            📋 Copiar
-                        </Button>
+                    {/* Link Display e Edição */}
+                    <div className="space-y-4">
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="slug">Seu Link Personalizado</Label>
+                            <div className="flex gap-2 items-center">
+                                <span className="text-muted-foreground text-sm font-mono whitespace-nowrap">
+                                    {typeof window !== "undefined" ? window.location.origin : "sunsync.app"}/
+                                </span>
+                                <Input
+                                    id="slug"
+                                    value={formData.slug}
+                                    onChange={(e) => {
+                                        // Apenas letras minúsculas, números e hífens
+                                        const val = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "")
+                                        setFormData({ ...formData, slug: val })
+                                    }}
+                                    className="font-mono bg-white dark:bg-zinc-900 border-amber-300 dark:border-amber-700"
+                                    placeholder="seu-studio"
+                                />
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                Use apenas letras, números e hífens. Ex: maria-bronze
+                            </p>
+                        </div>
+
+                        <div className="flex gap-2 justify-end">
+                            <Button
+                                onClick={() => {
+                                    const link = typeof window !== "undefined"
+                                        ? `${window.location.origin}/${formData.slug}`
+                                        : `https://sunsync.app/${formData.slug}`
+                                    navigator.clipboard.writeText(link)
+                                    addToast({ title: "Link copiado! 📋" })
+                                }}
+                                variant="outline"
+                                className="w-full sm:w-auto"
+                            >
+                                📋 Copiar Link
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Dicas de uso */}
@@ -315,9 +339,22 @@ export default function ConfiguracoesPage() {
                         <Input
                             id="establishmentName"
                             value={formData.establishment_name}
-                            onChange={(e) =>
-                                setFormData({ ...formData, establishment_name: e.target.value })
-                            }
+                            onChange={(e) => {
+                                const newName = e.target.value
+                                // Gera slug automaticamente: converte para minúsculas, remove acentos e substitui espaços/símbolos por hífens
+                                const newSlug = newName
+                                    .toLowerCase()
+                                    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove acentos
+                                    .replace(/[^a-z0-9]/g, "-") // Substitui não alfanuméricos por hífen
+                                    .replace(/-+/g, "-") // Remove hífens duplicados
+                                    .replace(/^-|-$/g, "") // Remove hífen do início/fim
+
+                                setFormData({
+                                    ...formData,
+                                    establishment_name: newName,
+                                    slug: newSlug
+                                })
+                            }}
                             placeholder="Ex: Studio Sol e Bronze"
                             className="border-green-200 dark:border-green-800"
                             disabled={!formData.pix_enabled}

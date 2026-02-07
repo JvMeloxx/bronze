@@ -20,6 +20,7 @@ interface Studio {
     payment_policy: string
     notifications_enabled: boolean
     owner_phone: string
+    slug: string
 }
 
 interface AuthContextType {
@@ -43,9 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true)
 
     const supabase = createClient()
-    const adminEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "oojoaovictoroo76@gmail.com"
+    const adminEmails = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || "oojoaovictoroo76@gmail.com")
+        .split(",")
+        .map(email => email.trim())
 
-    const isAdmin = user?.email === adminEmail
+    const isAdmin = user?.email ? adminEmails.includes(user.email) : false
 
     // Buscar dados do studio
     const fetchStudio = async (userId: string) => {

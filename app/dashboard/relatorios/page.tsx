@@ -10,15 +10,15 @@ import {
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAgendamentos, useClientes, usePacotes } from "@/lib/hooks"
-import { formatarMoeda, getTipoLabel } from "@/lib/data"
+import { useAgendamentosDB, useClientesDB, useServicosDB } from "@/lib/hooks-supabase"
+import { formatarMoeda, getStatusColor } from "@/lib/utils"
 
 export default function RelatoriosPage() {
-    const { agendamentos, isLoading: loadingAgendamentos } = useAgendamentos()
-    const { clientes, isLoading: loadingClientes } = useClientes()
-    const { pacotes } = usePacotes()
+    const { agendamentos, isLoading: loadingAgendamentos } = useAgendamentosDB()
+    const { clientes, isLoading: loadingClientes } = useClientesDB()
+    const { servicos, isLoading: loadingServicos } = useServicosDB()
 
-    const isLoading = loadingAgendamentos || loadingClientes
+    const isLoading = loadingAgendamentos || loadingClientes || loadingServicos
 
     // Dados calculados
     const stats = useMemo(() => {
@@ -26,9 +26,10 @@ export default function RelatoriosPage() {
         const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1)
         const primeiroDiaMesStr = primeiroDiaMes.toISOString().split("T")[0]
 
-        // Sessões por tipo
-        const sessoesPorTipo = agendamentos.reduce((acc, a) => {
-            acc[a.tipo] = (acc[a.tipo] || 0) + 1
+        // Sessões por serviço
+        const sessoesPorServico = agendamentos.reduce((acc, a) => {
+            const nome = a.servico_nome || "Outro"
+            acc[nome] = (acc[nome] || 0) + 1
             return acc
         }, {} as Record<string, number>)
 
@@ -40,7 +41,8 @@ export default function RelatoriosPage() {
 
         // Clientes mais frequentes
         const clienteFrequencia = agendamentos.reduce((acc, a) => {
-            acc[a.clienteNome] = (acc[a.clienteNome] || 0) + 1
+            const nome = a.cliente_nome || "Cliente Desconhecido"
+            acc[nome] = (acc[nome] || 0) + 1
             return acc
         }, {} as Record<string, number>)
 
@@ -48,21 +50,25 @@ export default function RelatoriosPage() {
             .sort(([, a], [, b]) => b - a)
             .slice(0, 5)
 
-        // Faturamento mensal simulado
+        // Faturamento mensal REAL (Apenas sessões realizadas)
         const sessoesRealizadasMes = agendamentos.filter(
             a => a.data >= primeiroDiaMesStr && a.status === "realizado"
-        ).length
-        const faturamentoMensal = sessoesRealizadasMes * 70 + 8450
+        )
+        const faturamentoMensal = sessoesRealizadasMes.reduce((acc, a) => acc + (Number(a.preco) || 0), 0)
 
         // Agendamentos por dia da semana
         const porDiaSemana = [0, 0, 0, 0, 0, 0, 0]
         agendamentos.forEach(a => {
+            if (!a.data) return
             const dia = new Date(a.data + "T00:00:00").getDay()
-            porDiaSemana[dia]++
+            if (!isNaN(dia)) {
+                porDiaSemana[dia]++
+            }
         })
 
         // Horários mais populares
         const porHorario = agendamentos.reduce((acc, a) => {
+            if (!a.horario) return acc
             const hora = a.horario.split(":")[0]
             acc[hora] = (acc[hora] || 0) + 1
             return acc
@@ -73,7 +79,7 @@ export default function RelatoriosPage() {
             .slice(0, 5)
 
         // Novos clientes por mês
-        const novosClientesMes = clientes.filter(c => c.dataCadastro >= primeiroDiaMesStr).length
+        const novosClientesMes = clientes.filter(c => c.created_at >= primeiroDiaMesStr).length
 
         // Taxa de conclusão
         const taxaConclusao = agendamentos.length > 0
@@ -82,7 +88,7 @@ export default function RelatoriosPage() {
 
         return {
             totalAgendamentos: agendamentos.length,
-            sessoesPorTipo,
+            sessoesPorServico,
             sessoesPorStatus,
             topClientes,
             faturamentoMensal,
@@ -91,9 +97,9 @@ export default function RelatoriosPage() {
             novosClientesMes,
             taxaConclusao,
             totalClientes: clientes.length,
-            pacotesAtivos: pacotes.filter(p => p.ativo).length
+            servicosAtivos: servicos.filter(p => p.ativo).length
         }
-    }, [agendamentos, clientes, pacotes])
+    }, [agendamentos, clientes, servicos])
 
     const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
@@ -197,28 +203,28 @@ export default function RelatoriosPage() {
                 {/* Sessões Tab */}
                 <TabsContent value="sessoes" className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Sessões por Tipo */}
+                        {/* Sessões por Serviço */}
                         <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    <span>🌟</span> Sessões por Tipo
+                                    <span>🌟</span> Sessões por Serviço
                                 </CardTitle>
                                 <CardDescription>
-                                    Distribuição dos tipos de bronzeamento
+                                    Distribuição dos serviços realizados
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
-                                {Object.entries(stats.sessoesPorTipo).length === 0 ? (
+                                {Object.entries(stats.sessoesPorServico).length === 0 ? (
                                     <p className="text-muted-foreground text-center py-4">
                                         Nenhum dado disponível
                                     </p>
                                 ) : (
-                                    Object.entries(stats.sessoesPorTipo).map(([tipo, count]) => {
+                                    Object.entries(stats.sessoesPorServico).map(([servico, count]) => {
                                         const percentage = Math.round((count / stats.totalAgendamentos) * 100)
                                         return (
-                                            <div key={tipo} className="space-y-2">
+                                            <div key={servico} className="space-y-2">
                                                 <div className="flex justify-between text-sm">
-                                                    <span>{getTipoLabel(tipo as "natural" | "spray" | "manutencao")}</span>
+                                                    <span>{servico}</span>
                                                     <span className="font-medium">{count} ({percentage}%)</span>
                                                 </div>
                                                 <div className="h-3 bg-amber-100 dark:bg-amber-900/30 rounded-full overflow-hidden">
@@ -355,7 +361,7 @@ export default function RelatoriosPage() {
                                     </div>
                                     <div className="p-4 rounded-lg bg-gradient-to-br from-green-500/10 to-emerald-500/10 text-center">
                                         <p className="text-3xl font-bold text-green-600">+{stats.novosClientesMes}</p>
-                                        <p className="text-sm text-muted-foreground">Novos</p>
+                                        <p className="text-sm text-muted-foreground">Novos deste Mês</p>
                                     </div>
                                 </div>
                                 <div className="p-4 rounded-lg border border-amber-200 dark:border-amber-800">
@@ -368,8 +374,8 @@ export default function RelatoriosPage() {
                                         </span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-sm text-muted-foreground">Pacotes ativos</span>
-                                        <span className="font-medium">{stats.pacotesAtivos}</span>
+                                        <span className="text-sm text-muted-foreground">Serviços ativos</span>
+                                        <span className="font-medium">{stats.servicosAtivos}</span>
                                     </div>
                                 </div>
                             </CardContent>

@@ -24,7 +24,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toast"
 import { useServicosDB, Servico } from "@/lib/hooks-supabase"
-import { formatarMoeda } from "@/lib/data"
+import { formatarMoeda } from "@/lib/utils"
 
 export default function ServicosPage() {
     const { addToast } = useToast()

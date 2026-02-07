@@ -215,7 +215,7 @@ Qualquer dúvida, estamos à disposição! ✨`,
     /**
      * Confirmação de agendamento (envia após agendar)
      */
-    agendamentoConfirmado: (clienteNome: string, data: string, horario: string, tipo: string, agendamentoId: string) =>
+    agendamentoConfirmado: (clienteNome: string, data: string, horario: string, tipo: string, agendamentoId: string, slug: string) =>
         `☀️ *SunSync - Agendamento Confirmado!*
 
 Olá ${clienteNome}! 🎉
@@ -228,7 +228,7 @@ Seu agendamento foi confirmado com sucesso!
 
 🔄 *Precisou alterar?*
 Acesse seu link exclusivo para reagendar:
-https://sunsync-app.vercel.app/agendar/remarcar/${agendamentoId}
+https://sunsync.site/${slug}/remarcar/${agendamentoId}
 
 Dicas para sua sessão:
 • Hidrate bem a pele no dia anterior
@@ -350,11 +350,12 @@ export async function enviarConfirmacaoAgendamento(
     data: string,
     horario: string,
     tipo: string,
-    agendamentoId: string
+    agendamentoId: string,
+    slug: string
 ): Promise<ZAPIResponse> {
     return sendTextMessage({
         phone: telefone,
-        message: MessageTemplates.agendamentoConfirmado(clienteNome, data, horario, tipo, agendamentoId)
+        message: MessageTemplates.agendamentoConfirmado(clienteNome, data, horario, tipo, agendamentoId, slug)
     })
 }
 

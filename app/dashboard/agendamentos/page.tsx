@@ -24,9 +24,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useAgendamentosDB, useClientesDB, useServicosDB, Agendamento } from "@/lib/hooks-supabase"
+import { useAgendamentosDB, useClientesDB, useServicosDB, useStudioConfig, Agendamento } from "@/lib/hooks-supabase"
 import { useToast } from "@/components/ui/toast"
-import { formatarData, getStatusColor } from "@/lib/data"
+import { formatarData, getStatusColor } from "@/lib/utils"
 import { enviarConfirmacaoAgendamento, enviarLembreteAgendamento } from "@/lib/zapi"
 
 export default function AgendamentosPage() {
@@ -40,6 +40,7 @@ export default function AgendamentosPage() {
 
     const { clientes } = useClientesDB()
     const { servicos } = useServicosDB()
+    const { config } = useStudioConfig()
 
     const { addToast } = useToast()
     const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null)
@@ -221,7 +222,7 @@ export default function AgendamentosPage() {
 
             const result = tipo === "lembrete"
                 ? await enviarLembreteAgendamento(telefone, nome, dataFormatada, agendamento.horario, agendamento.servico_nome)
-                : await enviarConfirmacaoAgendamento(telefone, nome, dataFormatada, agendamento.horario, agendamento.servico_nome, agendamento.id)
+                : await enviarConfirmacaoAgendamento(telefone, nome, dataFormatada, agendamento.horario, agendamento.servico_nome, agendamento.id, config?.slug || "")
 
             if (result.success) {
                 addToast({

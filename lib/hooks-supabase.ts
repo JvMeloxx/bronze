@@ -380,45 +380,54 @@ export function useDashboardStatsDB() {
         const primeiroDiaMesStr = primeiroDiaMes.toISOString().split("T")[0]
 
         try {
-            // 1. Agendamentos de Hoje (Lista completa para mostrar na tela)
-            const { data: agendamentosHojeData } = await supabase
-                .from("agendamentos")
-                .select("*")
-                .eq("studio_id", studio.id)
-                .eq("data", hoje)
-                .order("horario", { ascending: true })
+            // Executar queries em paralelo para maior velocidade
+            const [
+                agendamentosHojeRes,
+                totalClientesRes,
+                sessoesSemanaRes,
+                faturamentoRes
+            ] = await Promise.all([
+                // 1. Agendamentos de Hoje (Precisa dos dados para listar)
+                supabase
+                    .from("agendamentos")
+                    .select("*")
+                    .eq("studio_id", studio.id)
+                    .eq("data", hoje)
+                    .order("horario", { ascending: true }),
 
-            // 2. Clientes (Apenas contagem)
-            const { count: totalClientesCount } = await supabase
-                .from("clientes")
-                .select("*", { count: 'exact', head: true })
-                .eq("studio_id", studio.id)
+                // 2. Total Clientes (Só count)
+                supabase
+                    .from("clientes")
+                    .select("*", { count: 'exact', head: true }) // head: true não traz dados, só count
+                    .eq("studio_id", studio.id),
 
-            // 3. Sessões da Semana (Apenas contagem)
-            const { count: sessoesSemanaCount } = await supabase
-                .from("agendamentos")
-                .select("*", { count: 'exact', head: true })
-                .eq("studio_id", studio.id)
-                .gte("data", inicioSemana.toISOString().split("T")[0])
-                .lte("data", fimSemana.toISOString().split("T")[0])
+                // 3. Sessões da Semana (Só count)
+                supabase
+                    .from("agendamentos")
+                    .select("*", { count: 'exact', head: true })
+                    .eq("studio_id", studio.id)
+                    .gte("data", inicioSemana.toISOString().split("T")[0])
+                    .lte("data", fimSemana.toISOString().split("T")[0]),
 
-            // 4. Faturamento Mensal (Apenas preços dos realizados)
-            const { data: faturamentoData } = await supabase
-                .from("agendamentos")
-                .select("preco")
-                .eq("studio_id", studio.id)
-                .eq("status", "realizado")
-                .gte("data", primeiroDiaMesStr)
+                // 4. Faturamento (Precisa somar o preço)
+                // Otimização: Trazer apenas a coluna preço, não o objeto todo
+                supabase
+                    .from("agendamentos")
+                    .select("preco")
+                    .eq("studio_id", studio.id)
+                    .eq("status", "realizado")
+                    .gte("data", primeiroDiaMesStr)
+            ])
 
-            const faturamentoTotal = faturamentoData?.reduce((acc, curr) => acc + (curr.preco || 0), 0) || 0
+            const faturamentoTotal = faturamentoRes.data?.reduce((acc, curr) => acc + (curr.preco || 0), 0) || 0
 
             setStats({
-                agendamentosHoje: agendamentosHojeData?.length || 0,
-                clientesAtivos: totalClientesCount || 0,
-                sessoesEstaSemana: sessoesSemanaCount || 0,
+                agendamentosHoje: agendamentosHojeRes.data?.length || 0,
+                clientesAtivos: totalClientesRes.count || 0,
+                sessoesEstaSemana: sessoesSemanaRes.count || 0,
                 faturamentoMensal: faturamentoTotal,
-                totalClientes: totalClientesCount || 0,
-                proximosAgendamentos: agendamentosHojeData || []
+                totalClientes: totalClientesRes.count || 0,
+                proximosAgendamentos: agendamentosHojeRes.data || []
             })
 
         } catch (error) {
