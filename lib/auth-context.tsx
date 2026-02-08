@@ -78,12 +78,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Verificar sessão atual
         const initAuth = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession()
+                // Timeout de 10 segundos para evitar "travamento" infinito
+                const timeoutPromise = new Promise<null>((_, reject) =>
+                    setTimeout(() => reject(new Error("Auth timeout")), 10000)
+                )
+
+                const sessionPromise = supabase.auth.getSession()
+
+                const result = await Promise.race([sessionPromise, timeoutPromise])
+
+                // Se chegou aqui sem erro, result é a sessão
+                const session = (result as { data: { session: Session | null } }).data.session
 
                 if (session?.user) {
-                    const [studioData] = await Promise.all([
-                        fetchStudio(session.user.id)
-                    ])
+                    // Busca de estúdio também com timeout
+                    const studioPromise = fetchStudio(session.user.id)
+                    const studioTimeout = new Promise<null>((resolve) =>
+                        setTimeout(() => resolve(null), 8000)
+                    )
+
+                    const studioData = await Promise.race([studioPromise, studioTimeout])
 
                     setSession(session)
                     setUser(session.user)
@@ -94,7 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setStudio(null)
                 }
             } catch (error) {
-                console.error("Erro na inicialização da auth:", error)
+                console.error("Erro na inicialização da auth (possível timeout):", error)
+                // Fallback: limpa estado para evitar tela travada
+                setSession(null)
+                setUser(null)
+                setStudio(null)
             } finally {
                 setIsLoading(false)
             }
