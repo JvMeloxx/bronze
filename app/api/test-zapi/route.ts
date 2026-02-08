@@ -1,28 +1,57 @@
 import { NextRequest, NextResponse } from "next/server"
-import { verificarStatusZAPI, sendTextMessage } from "@/lib/zapi"
+import { formatPhoneNumber } from "@/lib/zapi"
+
+const ZAPI_BASE_URL = "https://api.z-api.io/instances"
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const action = searchParams.get("action")
     const phone = searchParams.get("phone")
 
+    const instanceId = process.env.NEXT_PUBLIC_ZAPI_INSTANCE_ID || ""
+    const token = process.env.NEXT_PUBLIC_ZAPI_TOKEN || ""
+
     // Verificar status da conexão
     if (action === "status") {
-        const status = await verificarStatusZAPI()
-        return NextResponse.json({
-            instanceId: process.env.NEXT_PUBLIC_ZAPI_INSTANCE_ID ? "Configurado" : "NÃO CONFIGURADO",
-            token: process.env.NEXT_PUBLIC_ZAPI_TOKEN ? "Configurado" : "NÃO CONFIGURADO",
-            ...status
-        })
+        try {
+            const url = `${ZAPI_BASE_URL}/${instanceId}/token/${token}/status`
+            const response = await fetch(url)
+            const data = await response.json()
+            return NextResponse.json({
+                instanceId: instanceId ? "Configurado" : "NÃO CONFIGURADO",
+                token: token ? "Configurado" : "NÃO CONFIGURADO",
+                apiResponse: data
+            })
+        } catch (error) {
+            return NextResponse.json({ error: String(error) })
+        }
     }
 
     // Enviar mensagem de teste
     if (action === "test" && phone) {
-        const result = await sendTextMessage({
-            phone,
-            message: "🧪 Teste do SunSync - WhatsApp funcionando!"
-        })
-        return NextResponse.json(result)
+        try {
+            const url = `${ZAPI_BASE_URL}/${instanceId}/token/${token}/send-text`
+            const formattedPhone = formatPhoneNumber(phone)
+
+            const response = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    phone: formattedPhone,
+                    message: "🧪 Teste do SunSync - WhatsApp funcionando!"
+                })
+            })
+
+            const data = await response.json()
+            return NextResponse.json({
+                success: response.ok,
+                phoneUsed: formattedPhone,
+                httpStatus: response.status,
+                apiResponse: data
+            })
+        } catch (error) {
+            return NextResponse.json({ error: String(error) })
+        }
     }
 
     return NextResponse.json({
