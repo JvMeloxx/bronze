@@ -6,9 +6,11 @@
  * NEXT_PUBLIC_ZAPI_INSTANCE_ID=sua_instancia
  * NEXT_PUBLIC_ZAPI_TOKEN=seu_token
  * NEXT_PUBLIC_ZAPI_CLIENT_TOKEN=seu_client_token (opcional)
+ * NEXT_PUBLIC_APP_URL=https://seu-dominio.com
  */
 
 const ZAPI_BASE_URL = "https://api.z-api.io/instances"
+const APP_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://sunsync.site"
 
 interface ZAPIConfig {
     instanceId: string
@@ -228,7 +230,7 @@ Seu agendamento foi confirmado com sucesso!
 
 🔄 *Precisou alterar?*
 Acesse seu link exclusivo para reagendar:
-https://sunsync.site/${slug}/remarcar/${agendamentoId}
+${APP_BASE_URL}/${slug}/remarcar/${agendamentoId}
 
 Dicas para sua sessão:
 • Hidrate bem a pele no dia anterior
