@@ -118,33 +118,46 @@ export function MobileNav() {
 
     const isPro = studio?.plano === "profissional" || !!studio?.drive_artes_link
 
-    const navItems = baseNavItems.filter(item => {
+    // Itens essenciais para mobile (Dashboard, Agenda, Clientes, Serviços, Config)
+    const mobileNavItems = baseNavItems.filter(item => {
         if (item.isPro && !isPro) return false
+        // Excluir Relatórios do mobile (pode acessar pelo menu)
+        if (item.href === "/dashboard/relatorios") return false
         return true
-    }).slice(0, 5)
+    })
 
     if (!mounted) return null
 
     return (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-amber-200 dark:border-amber-800 z-50">
-            <div className="flex justify-around py-2">
-                {navItems.map((item) => {
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-amber-200 dark:border-amber-800 z-50 safe-area-bottom">
+            <div className="flex justify-around py-2 px-1">
+                {mobileNavItems.map((item) => {
                     const isActive = pathname === item.href ||
                         (item.href !== "/dashboard" && pathname.startsWith(item.href))
+
+                    // Labels mais curtos para mobile
+                    const shortLabels: Record<string, string> = {
+                        "Dashboard": "Início",
+                        "Agendamentos": "Agenda",
+                        "Clientes": "Clientes",
+                        "Serviços": "Serviços",
+                        "Artes": "Artes",
+                        "Configurações": "Config",
+                    }
 
                     return (
                         <Link
                             key={item.href}
                             href={item.href}
                             className={cn(
-                                "flex flex-col items-center py-2 px-3 text-xs transition-colors",
+                                "flex flex-col items-center py-1.5 px-1 min-w-0 flex-1 text-[10px] sm:text-xs transition-colors",
                                 isActive
                                     ? "text-amber-600 dark:text-amber-400"
                                     : "text-muted-foreground"
                             )}
                         >
-                            <span className="text-xl mb-1">{item.icon}</span>
-                            <span className="truncate">{item.label.split(" ")[0]}</span>
+                            <span className="text-lg sm:text-xl mb-0.5">{item.icon}</span>
+                            <span className="truncate w-full text-center">{shortLabels[item.label] || item.label}</span>
                         </Link>
                     )
                 })}
