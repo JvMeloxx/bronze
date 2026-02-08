@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { createClient } from "@/lib/supabase"
 import { useAuth } from "@/lib/auth-context"
+import { getCache, setCache, CACHE_KEYS, CACHE_TTL } from "@/lib/cache"
 
 // Tipos
 export interface Cliente {
@@ -141,9 +142,13 @@ export function useClientesDB() {
     }
 }
 
-// Hook para gerenciar Serviços (antigo Pacotes)
+// Hook para gerenciar Serviços (antigo Pacotes) - com cache
 export function useServicosDB() {
-    const [servicos, setServicos] = useState<Servico[]>([])
+    const [servicos, setServicos] = useState<Servico[]>(() => {
+        // Inicializar com dados do cache se disponível
+        const cached = getCache<Servico[]>(CACHE_KEYS.SERVICOS)
+        return cached || []
+    })
     const [isLoading, setIsLoading] = useState(true)
     const { studio } = useAuth()
     const supabase = createClient()
@@ -151,7 +156,10 @@ export function useServicosDB() {
     const fetchServicos = useCallback(async () => {
         if (!studio?.id) return
 
-        setIsLoading(true)
+        // Só mostra loading se não tiver cache
+        const cached = getCache<Servico[]>(CACHE_KEYS.SERVICOS)
+        if (!cached) setIsLoading(true)
+
         const { data, error } = await supabase
             .from("servicos")
             .select("*")
@@ -162,6 +170,8 @@ export function useServicosDB() {
             console.error("Erro ao buscar serviços:", error)
         } else {
             setServicos(data || [])
+            // Salvar no cache por 5 minutos
+            setCache(CACHE_KEYS.SERVICOS, data || [], CACHE_TTL.MEDIUM)
         }
         setIsLoading(false)
     }, [studio, supabase])
