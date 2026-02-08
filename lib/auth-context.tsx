@@ -76,41 +76,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     useEffect(() => {
-        // Verificar sessão atual
+        // Verificar sessão atual - versão otimizada
         const initAuth = async () => {
             try {
-                // Timeout de 10 segundos para evitar "travamento" infinito
-                const timeoutPromise = new Promise<null>((_, reject) =>
-                    setTimeout(() => reject(new Error("Auth timeout")), 10000)
-                )
+                // Timeout reduzido para 5 segundos
+                const controller = new AbortController()
+                const timeoutId = setTimeout(() => controller.abort(), 5000)
 
-                const sessionPromise = supabase.auth.getSession()
-
-                const result = await Promise.race([sessionPromise, timeoutPromise])
-
-                // Se chegou aqui sem erro, result é a sessão
-                const session = (result as { data: { session: Session | null } }).data.session
+                const { data: { session } } = await supabase.auth.getSession()
+                clearTimeout(timeoutId)
 
                 if (session?.user) {
-                    // Busca de estúdio também com timeout
-                    const studioPromise = fetchStudio(session.user.id)
-                    const studioTimeout = new Promise<null>((resolve) =>
-                        setTimeout(() => resolve(null), 8000)
-                    )
-
-                    const studioData = await Promise.race([studioPromise, studioTimeout])
-
                     setSession(session)
                     setUser(session.user)
-                    setStudio(studioData)
+
+                    // Buscar studio em background (não bloqueia o loading)
+                    fetchStudio(session.user.id).then(studioData => {
+                        setStudio(studioData)
+                    }).catch(console.error)
                 } else {
                     setSession(null)
                     setUser(null)
                     setStudio(null)
                 }
             } catch (error) {
-                console.error("Erro na inicialização da auth (possível timeout):", error)
-                // Fallback: limpa estado para evitar tela travada
+                console.error("Erro na inicialização da auth:", error)
                 setSession(null)
                 setUser(null)
                 setStudio(null)
