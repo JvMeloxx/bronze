@@ -41,6 +41,7 @@ interface StudioPublicConfig {
     payment_policy: string
     notifications_enabled: boolean
     owner_phone: string
+    horarios_funcionamento: string[] // Horários que o estúdio atende
     // Flag interna para saber se deve enviar msg
     send_to_owner: boolean
     send_to_client: boolean
@@ -116,6 +117,10 @@ export default function AgendarPage() {
                     payment_policy: currentStudio.payment_policy || "",
                     notifications_enabled: currentStudio.notifications_enabled ?? false,
                     owner_phone: currentStudio.owner_phone || "",
+                    horarios_funcionamento: currentStudio.horarios_funcionamento || [
+                        '08:00', '09:00', '10:00', '11:00', '12:00',
+                        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
+                    ],
                     send_to_owner: true,
                     send_to_client: true
                 })
@@ -139,10 +144,10 @@ export default function AgendarPage() {
         loadStudioData()
     }, [supabase, slug])
 
-    // Horários disponíveis (9h às 17h)
-    const horarios = [
-        "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-        "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
+    // Horários disponíveis - usa os configurados pelo estúdio
+    const horarios = studio?.horarios_funcionamento || [
+        '08:00', '09:00', '10:00', '11:00', '12:00',
+        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
     ]
 
     const formatDate = (dateStr: string) => {

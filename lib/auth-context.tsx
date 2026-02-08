@@ -21,6 +21,7 @@ interface Studio {
     notifications_enabled: boolean
     owner_phone: string
     slug: string
+    horarios_funcionamento: string[]
 }
 
 interface AuthContextType {

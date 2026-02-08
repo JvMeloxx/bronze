@@ -34,6 +34,13 @@ export default function ConfiguracoesPage() {
 
     // Local state for form fields to handle inputs before saving
     // Initialized with empty/default, will populate via useEffect when config loads
+    // Lista de todos os horários possíveis
+    const ALL_HOURS = [
+        '08:00', '09:00', '10:00', '11:00', '12:00',
+        '13:00', '14:00', '15:00', '16:00', '17:00',
+        '18:00', '19:00', '20:00'
+    ]
+
     const [formData, setFormData] = useState({
         owner_phone: "",
         notifications_enabled: true,
@@ -43,7 +50,8 @@ export default function ConfiguracoesPage() {
         establishment_name: "",
         signal_percentage: 50,
         payment_policy: "",
-        slug: "", // Novo campo
+        slug: "",
+        horarios_funcionamento: ALL_HOURS, // Horários de funcionamento
     })
 
     // Populate form data when config is loaded
@@ -59,6 +67,7 @@ export default function ConfiguracoesPage() {
                 signal_percentage: config.signal_percentage || 50,
                 payment_policy: config.payment_policy || "",
                 slug: config.slug || "",
+                horarios_funcionamento: (config.horarios_funcionamento as string[]) || ALL_HOURS,
             })
         }
     }, [config])
@@ -76,7 +85,8 @@ export default function ConfiguracoesPage() {
             establishment_name: formData.establishment_name,
             signal_percentage: formData.signal_percentage,
             payment_policy: formData.payment_policy,
-            slug: formData.slug
+            slug: formData.slug,
+            horarios_funcionamento: formData.horarios_funcionamento
         })
 
         if (success) {
@@ -225,6 +235,92 @@ export default function ConfiguracoesPage() {
                 </CardContent>
             </Card>
 
+            {/* Card Horários de Funcionamento */}
+            <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <span className="text-2xl">🕐</span>
+                        Horários de Funcionamento
+                    </CardTitle>
+                    <CardDescription>
+                        Selecione os horários em que você atende clientes
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">
+                        Clique nos horários para ativar/desativar. Apenas horários ativos aparecerão para suas clientes na página de agendamento.
+                    </p>
+
+                    {/* Grid de Horários */}
+                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2">
+                        {ALL_HOURS.map((hora) => {
+                            const isActive = formData.horarios_funcionamento.includes(hora)
+                            return (
+                                <button
+                                    key={hora}
+                                    type="button"
+                                    onClick={() => {
+                                        if (isActive) {
+                                            // Remover horário
+                                            setFormData({
+                                                ...formData,
+                                                horarios_funcionamento: formData.horarios_funcionamento.filter(h => h !== hora)
+                                            })
+                                        } else {
+                                            // Adicionar horário
+                                            setFormData({
+                                                ...formData,
+                                                horarios_funcionamento: [...formData.horarios_funcionamento, hora].sort()
+                                            })
+                                        }
+                                    }}
+                                    className={`
+                                        px-3 py-2 rounded-lg text-sm font-medium transition-all
+                                        ${isActive
+                                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
+                                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                                        }
+                                    `}
+                                >
+                                    {hora}
+                                </button>
+                            )
+                        })}
+                    </div>
+
+                    {/* Contador */}
+                    <div className="flex items-center justify-between pt-2">
+                        <p className="text-sm text-muted-foreground">
+                            <span className="font-semibold text-amber-600">{formData.horarios_funcionamento.length}</span> horários selecionados
+                        </p>
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setFormData({ ...formData, horarios_funcionamento: [] })}
+                            >
+                                Limpar
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setFormData({ ...formData, horarios_funcionamento: [...ALL_HOURS] })}
+                            >
+                                Todos
+                            </Button>
+                        </div>
+                    </div>
+
+                    {/* Botão Salvar */}
+                    <Button
+                        size="lg"
+                        onClick={handleSave}
+                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+                    >
+                        💾 Salvar Horários
+                    </Button>
+                </CardContent>
+            </Card>
 
             {/* Card Principal */}
             <Card className="border-amber-200 dark:border-amber-800">
