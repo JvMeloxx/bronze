@@ -28,7 +28,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAgendamentosDB, useClientesDB, useServicosDB, useStudioConfig, Agendamento } from "@/lib/hooks-supabase"
 import { useToast } from "@/components/ui/toast"
 import { formatarData, getStatusColor } from "@/lib/utils"
-import { enviarConfirmacaoAgendamento, enviarLembreteAgendamento } from "@/lib/zapi"
+import { enviarConfirmacaoAgendamento, enviarLembreteAgendamento, MessageTemplates, sendTextMessage } from "@/lib/zapi"
 
 export default function AgendamentosPage() {
     const {
@@ -179,7 +179,37 @@ export default function AgendamentosPage() {
     }
 
     const handleStatusChange = async (id: string, newStatus: Agendamento["status"]) => {
+        // Buscar dados do agendamento para enviar mensagem
+        const agendamento = agendamentos.find(a => a.id === id)
+
         await updateAgendamento(id, { status: newStatus })
+
+        // Enviar mensagem WhatsApp automática com base no novo status
+        if (agendamento && config?.notifications_enabled) {
+            const telefone = agendamento.telefone
+            const nome = agendamento.cliente_nome
+
+            if (telefone && nome) {
+                try {
+                    if (newStatus === "realizado") {
+                        // Mensagem pós-sessão
+                        await sendTextMessage({
+                            phone: telefone,
+                            message: MessageTemplates.posSessao(nome)
+                        })
+                    } else if (newStatus === "cancelado") {
+                        // Mensagem de cancelamento
+                        await sendTextMessage({
+                            phone: telefone,
+                            message: MessageTemplates.agendamentoCancelado(nome, agendamento.data, agendamento.horario)
+                        })
+                    }
+                } catch (err) {
+                    console.error("Erro ao enviar mensagem WhatsApp:", err)
+                }
+            }
+        }
+
         addToast({
             title: "Status atualizado",
             description: `Agendamento marcado como ${newStatus}`,

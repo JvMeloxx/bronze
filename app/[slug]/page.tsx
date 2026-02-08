@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { getWeatherForecast, getUVColor, getUVDescription, WeatherDay } from "@/lib/weather"
-import { enviarNotificacaoNovoPedido, enviarConfirmacaoAgendamento } from "@/lib/zapi"
+import { enviarNotificacaoNovoPedido, enviarConfirmacaoAgendamento, enviarBoasVindas } from "@/lib/zapi"
 import { createClient } from "@/lib/supabase"
 import { Servico, Cliente } from "@/lib/hooks-supabase"
 
@@ -204,10 +204,12 @@ export default function AgendarPage() {
                 if (found) existingId = found.id
             }
 
+            let isNewClient = false
             if (existingId) {
                 clienteId = existingId
             } else {
-                // Criar
+                // Criar novo cliente
+                isNewClient = true
                 const { data: newClient, error: createError } = await supabase
                     .from("clientes")
                     .insert({
@@ -276,6 +278,14 @@ export default function AgendarPage() {
                     booking.id, // Passando ID para link de reagendamento
                     slug
                 ).catch(console.error)
+
+                // Boas-vindas para cliente novo
+                if (isNewClient) {
+                    await enviarBoasVindas(
+                        formData.telefone,
+                        formData.nome
+                    ).catch(console.error)
+                }
             }
 
             // 4. Redirecionar Sucesso com Params PIX
