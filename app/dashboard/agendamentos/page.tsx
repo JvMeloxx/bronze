@@ -12,6 +12,7 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
     Dialog,
     DialogContent,
@@ -269,13 +270,45 @@ export default function AgendamentosPage() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4 animate-pulse">
-                        <span className="text-white text-xl">📅</span>
+            <div className="space-y-6 animate-in fade-in duration-500">
+                {/* Header Skeleton */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <Skeleton className="h-9 w-48 mb-2" />
+                        <Skeleton className="h-5 w-64" />
                     </div>
-                    <p className="text-muted-foreground">Carregando agendamentos...</p>
+                    <Skeleton className="h-10 w-40" />
                 </div>
+
+                {/* Tabs Skeleton */}
+                <Skeleton className="h-10 w-64" />
+
+                {/* Date Selector Skeleton */}
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                    {Array.from({ length: 7 }).map((_, i) => (
+                        <Skeleton key={i} className="h-20 w-16 rounded-lg flex-shrink-0" />
+                    ))}
+                </div>
+
+                {/* Appointments Card Skeleton */}
+                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
+                    <CardHeader>
+                        <Skeleton className="h-6 w-40" />
+                        <Skeleton className="h-4 w-24" />
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <div key={i} className="flex items-center gap-4 p-4 rounded-lg bg-amber-50/50 dark:bg-amber-950/20">
+                                <Skeleton className="h-12 w-12 rounded" />
+                                <div className="flex-1 space-y-2">
+                                    <Skeleton className="h-4 w-32" />
+                                    <Skeleton className="h-3 w-24" />
+                                </div>
+                                <Skeleton className="h-8 w-24 rounded-full" />
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
             </div>
         )
     }

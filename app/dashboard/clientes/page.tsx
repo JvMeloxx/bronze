@@ -12,6 +12,7 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
     Dialog,
     DialogContent,
@@ -120,12 +121,41 @@ export default function ClientesPage() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4 animate-pulse">
-                        <span className="text-white text-xl">👥</span>
+            <div className="space-y-6 animate-in fade-in duration-500">
+                {/* Header Skeleton */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <Skeleton className="h-9 w-32 mb-2" />
+                        <Skeleton className="h-5 w-56" />
                     </div>
-                    <p className="text-muted-foreground">Carregando clientes...</p>
+                    <Skeleton className="h-10 w-36" />
+                </div>
+
+                {/* Search Skeleton */}
+                <Skeleton className="h-10 w-80" />
+
+                {/* Client Cards Skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <Card key={i} className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
+                            <CardHeader className="pb-2">
+                                <div className="flex items-start justify-between">
+                                    <div className="space-y-2">
+                                        <Skeleton className="h-5 w-32" />
+                                        <Skeleton className="h-4 w-40" />
+                                    </div>
+                                    <div className="flex gap-1">
+                                        <Skeleton className="h-8 w-8 rounded" />
+                                        <Skeleton className="h-8 w-8 rounded" />
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <Skeleton className="h-6 w-24 rounded-full mb-2" />
+                                <Skeleton className="h-4 w-32" />
+                            </CardContent>
+                        </Card>
+                    ))}
                 </div>
             </div>
         )

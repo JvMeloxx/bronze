@@ -10,8 +10,27 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useDashboardStatsDB, useServicosDB } from "@/lib/hooks-supabase"
 import { getStatusColor, formatarMoeda } from "@/lib/utils"
+
+// Componente de Skeleton para os cards de estatísticas
+function StatCardSkeleton() {
+    return (
+        <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50">
+            <CardHeader className="pb-2">
+                <CardDescription className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4 rounded" />
+                    <Skeleton className="h-4 w-24" />
+                </CardDescription>
+                <Skeleton className="h-9 w-16 mt-2" />
+            </CardHeader>
+            <CardContent>
+                <Skeleton className="h-4 w-20" />
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function DashboardPage() {
     const {
@@ -20,10 +39,11 @@ export default function DashboardPage() {
         sessoesEstaSemana,
         faturamentoMensal,
         totalClientes,
-        proximosAgendamentos
+        proximosAgendamentos,
+        isLoading
     } = useDashboardStatsDB()
 
-    const { servicos } = useServicosDB()
+    const { servicos, isLoading: isLoadingServicos } = useServicosDB()
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
@@ -37,65 +57,76 @@ export default function DashboardPage() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
-                    <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2">
-                            <span>📅</span> Agendamentos Hoje
-                        </CardDescription>
-                        <CardTitle className="text-3xl font-bold text-amber-600">
-                            {agendamentosHoje}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                            {proximosAgendamentos.filter(a => a.status === "confirmado").length} confirmados
-                        </p>
-                    </CardContent>
-                </Card>
+                {isLoading ? (
+                    <>
+                        <StatCardSkeleton />
+                        <StatCardSkeleton />
+                        <StatCardSkeleton />
+                        <StatCardSkeleton />
+                    </>
+                ) : (
+                    <>
+                        <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                            <CardHeader className="pb-2">
+                                <CardDescription className="flex items-center gap-2">
+                                    <span>📅</span> Agendamentos Hoje
+                                </CardDescription>
+                                <CardTitle className="text-3xl font-bold text-amber-600">
+                                    {agendamentosHoje}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">
+                                    {proximosAgendamentos.filter(a => a.status === "confirmado").length} confirmados
+                                </p>
+                            </CardContent>
+                        </Card>
 
-                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
-                    <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2">
-                            <span>👥</span> Clientes Ativos
-                        </CardDescription>
-                        <CardTitle className="text-3xl font-bold text-orange-600">
-                            {clientesAtivos}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">
-                            {totalClientes} total cadastrados
-                        </p>
-                    </CardContent>
-                </Card>
+                        <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                            <CardHeader className="pb-2">
+                                <CardDescription className="flex items-center gap-2">
+                                    <span>👥</span> Clientes Ativos
+                                </CardDescription>
+                                <CardTitle className="text-3xl font-bold text-orange-600">
+                                    {clientesAtivos}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">
+                                    {totalClientes} total cadastrados
+                                </p>
+                            </CardContent>
+                        </Card>
 
-                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
-                    <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2">
-                            <span>🌟</span> Sessões Semana
-                        </CardDescription>
-                        <CardTitle className="text-3xl font-bold text-yellow-600">
-                            {sessoesEstaSemana}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">Meta: 80 sessões</p>
-                    </CardContent>
-                </Card>
+                        <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                            <CardHeader className="pb-2">
+                                <CardDescription className="flex items-center gap-2">
+                                    <span>🌟</span> Sessões Semana
+                                </CardDescription>
+                                <CardTitle className="text-3xl font-bold text-yellow-600">
+                                    {sessoesEstaSemana}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">Meta: 80 sessões</p>
+                            </CardContent>
+                        </Card>
 
-                <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
-                    <CardHeader className="pb-2">
-                        <CardDescription className="flex items-center gap-2">
-                            <span>💰</span> Faturamento
-                        </CardDescription>
-                        <CardTitle className="text-3xl font-bold text-green-600">
-                            {formatarMoeda(faturamentoMensal)}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-muted-foreground">Mês atual</p>
-                    </CardContent>
-                </Card>
+                        <Card className="border-amber-200 dark:border-amber-800 bg-white/50 dark:bg-zinc-900/50 hover:shadow-lg hover:shadow-amber-500/10 transition-all duration-300">
+                            <CardHeader className="pb-2">
+                                <CardDescription className="flex items-center gap-2">
+                                    <span>💰</span> Faturamento
+                                </CardDescription>
+                                <CardTitle className="text-3xl font-bold text-green-600">
+                                    {formatarMoeda(faturamentoMensal)}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <p className="text-sm text-muted-foreground">Mês atual</p>
+                            </CardContent>
+                        </Card>
+                    </>
+                )}
             </div>
 
             {/* Quick Actions */}
