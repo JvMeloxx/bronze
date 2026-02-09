@@ -66,12 +66,52 @@ interface OpenMeteoResponse {
     }
 }
 
+// Cache de 2 horas para previsão do tempo
+const WEATHER_CACHE_KEY = 'sunsync_weather_cache'
+const WEATHER_CACHE_TTL = 2 * 60 * 60 * 1000 // 2 horas em ms
+
+interface WeatherCache {
+    data: WeatherDay[]
+    timestamp: number
+    key: string
+}
+
+function getWeatherCache(cacheKey: string): WeatherDay[] | null {
+    if (typeof window === 'undefined') return null
+    try {
+        const raw = localStorage.getItem(WEATHER_CACHE_KEY)
+        if (!raw) return null
+        const cache: WeatherCache = JSON.parse(raw)
+        if (cache.key !== cacheKey) return null
+        if (Date.now() - cache.timestamp > WEATHER_CACHE_TTL) return null
+        return cache.data
+    } catch {
+        return null
+    }
+}
+
+function setWeatherCache(cacheKey: string, data: WeatherDay[]) {
+    if (typeof window === 'undefined') return
+    try {
+        const cache: WeatherCache = { data, timestamp: Date.now(), key: cacheKey }
+        localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify(cache))
+    } catch {
+        // localStorage cheio ou indisponível — ignora
+    }
+}
+
 /**
- * Busca previsão do tempo para os próximos 7 dias
+ * Busca previsão do tempo para os próximos 14 dias (com cache de 2h)
  * @param lat Latitude (padrão: São Paulo)
  * @param lng Longitude (padrão: São Paulo)
  */
 export async function getWeatherForecast(lat: number = -23.55, lng: number = -46.63): Promise<WeatherDay[]> {
+    const cacheKey = `${lat},${lng}`
+
+    // Tentar cache primeiro
+    const cached = getWeatherCache(cacheKey)
+    if (cached) return cached
+
     try {
         const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&timezone=America/Sao_Paulo&forecast_days=14`
 
@@ -98,6 +138,9 @@ export async function getWeatherForecast(lat: number = -23.55, lng: number = -46
                 isSunny: weatherDetails.isSunny,
             }
         })
+
+        // Salvar no cache
+        setWeatherCache(cacheKey, forecast)
 
         return forecast
     } catch (error) {
