@@ -76,10 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     useEffect(() => {
-        // Verificar sessão atual - versão otimizada
+        // Verificar sessão atual - com timeout de segurança
         const initAuth = async () => {
             try {
-                const { data: { session }, error } = await supabase.auth.getSession()
+                // Timeout de 5s para não travar a tela
+                const sessionPromise = supabase.auth.getSession()
+                const timeoutPromise = new Promise<{ data: { session: null }, error: null }>((resolve) =>
+                    setTimeout(() => resolve({ data: { session: null }, error: null }), 5000)
+                )
+
+                const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise])
 
                 if (error) {
                     console.warn("Erro ao buscar sessão:", error)
@@ -104,7 +110,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(null)
                 setStudio(null)
             } finally {
-                // Sempre liberar o loading na primeira tentativa
                 setIsLoading(false)
             }
         }
