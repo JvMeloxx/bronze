@@ -113,7 +113,7 @@ export async function getWeatherForecast(lat: number = -23.55, lng: number = -46
     if (cached) return cached
 
     try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&timezone=America/Sao_Paulo&forecast_days=14`
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max&timezone=America/Sao_Paulo&forecast_days=7`
 
         const response = await fetch(url)
 
