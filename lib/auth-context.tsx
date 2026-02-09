@@ -76,27 +76,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     useEffect(() => {
-        // Verificar sessão atual - versão otimizada com retry
-        const initAuth = async (retryCount = 0) => {
-            const MAX_RETRIES = 3
-            const TIMEOUT_MS = 15000 // Aumentado para 15 segundos
-
+        // Verificar sessão atual - versão otimizada
+        const initAuth = async () => {
             try {
-                // Timeout mais tolerante
-                const controller = new AbortController()
-                const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS)
-
                 const { data: { session }, error } = await supabase.auth.getSession()
-                clearTimeout(timeoutId)
 
                 if (error) {
                     console.warn("Erro ao buscar sessão:", error)
-                    // Tentar novamente se for erro de rede e não atingimos max retries
-                    if (retryCount < MAX_RETRIES && error.message?.includes('fetch')) {
-                        console.log(`Tentando novamente... (${retryCount + 1}/${MAX_RETRIES})`)
-                        setTimeout(() => initAuth(retryCount + 1), 1000 * (retryCount + 1))
-                        return
-                    }
                 }
 
                 if (session?.user) {
@@ -114,23 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
             } catch (error) {
                 console.error("Erro na inicialização da auth:", error)
-
-                // Se for erro de timeout/rede e ainda temos retries, tentar novamente
-                if (retryCount < MAX_RETRIES) {
-                    console.log(`Tentando novamente após erro... (${retryCount + 1}/${MAX_RETRIES})`)
-                    setTimeout(() => initAuth(retryCount + 1), 1000 * (retryCount + 1))
-                    return
-                }
-
-                // Apenas limpar se realmente não conseguimos conectar após todas as tentativas
                 setSession(null)
                 setUser(null)
                 setStudio(null)
             } finally {
-                // Só marca como não loading após primeira tentativa ou sucesso
-                if (retryCount === 0 || retryCount >= MAX_RETRIES) {
-                    setIsLoading(false)
-                }
+                // Sempre liberar o loading na primeira tentativa
+                setIsLoading(false)
             }
         }
 
