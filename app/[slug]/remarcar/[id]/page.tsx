@@ -160,7 +160,8 @@ export default function RemarcarPage() {
                     originalAgendamento.cliente_nome,
                     novaDataFormatada,
                     selectedHorario,
-                    originalAgendamento.servico_nome
+                    originalAgendamento.servico_nome,
+                    studio.nome_estudio // Nome do estúdio para identificação
                 ).catch(console.error)
             }
 

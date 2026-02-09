@@ -39,6 +39,7 @@ export default function ServicosPage() {
         descricao: "",
         preco: 0,
         duracao: "30 min",
+        capacidade: 1,
     })
 
     const resetForm = () => {
@@ -47,6 +48,7 @@ export default function ServicosPage() {
             descricao: "",
             preco: 0,
             duracao: "30 min",
+            capacidade: 1,
         })
         setEditingServico(null)
     }
@@ -59,6 +61,7 @@ export default function ServicosPage() {
                 descricao: servico.descricao,
                 preco: servico.preco,
                 duracao: servico.duracao.toString() + " min",
+                capacidade: servico.capacidade ?? 1,
             })
         } else {
             resetForm()
@@ -84,7 +87,8 @@ export default function ServicosPage() {
                 nome: formData.nome,
                 descricao: formData.descricao,
                 preco: formData.preco,
-                duracao: duracaoMinutos
+                duracao: duracaoMinutos,
+                capacidade: formData.capacidade
             })
             if (success) addToast({ title: "Sucesso!", description: "Serviço atualizado", variant: "success" })
         } else {
@@ -94,6 +98,7 @@ export default function ServicosPage() {
                 descricao: formData.descricao,
                 preco: formData.preco,
                 duracao: duracaoMinutos,
+                capacidade: formData.capacidade,
                 ativo: true
             })
             if (newServico) {
@@ -210,6 +215,21 @@ export default function ServicosPage() {
                                     />
                                 </div>
                             </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="capacidade">Capacidade por horário</Label>
+                                <Input
+                                    id="capacidade"
+                                    type="number"
+                                    min="0"
+                                    value={formData.capacidade}
+                                    onChange={(e) => setFormData({ ...formData, capacidade: parseInt(e.target.value) || 0 })}
+                                    placeholder="Ex: 1"
+                                    className="border-amber-200 dark:border-amber-800"
+                                />
+                                <p className="text-xs text-muted-foreground">
+                                    Quantos clientes podem agendar no mesmo horário. 0 = sem limite.
+                                </p>
+                            </div>
                         </div>
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
@@ -275,6 +295,9 @@ export default function ServicosPage() {
                                     </div>
                                     <div className="text-right">
                                         <p className="text-sm text-muted-foreground">⏱️ {servico.duracao} min</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            👥 {servico.capacidade === 0 ? 'Sem limite' : `${servico.capacidade} vaga${servico.capacidade > 1 ? 's' : ''}/horário`}
+                                        </p>
                                     </div>
                                 </div>
 

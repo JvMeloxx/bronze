@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase"
+import { createAdminClient } from "@/lib/supabase-admin"
 import { enviarConfirmacaoAgendamento, sendTextMessage } from "@/lib/zapi"
 
 // Segredo para validar se necessário (opcional por enquanto)
@@ -8,7 +8,9 @@ import { enviarConfirmacaoAgendamento, sendTextMessage } from "@/lib/zapi"
 export async function POST(request: Request) {
     try {
         const payload = await request.json()
-        const supabase = createClient()
+
+        // Usar cliente admin para poder editar qualquer agendamento (bypass RLS)
+        const supabase = createAdminClient()
 
         console.log("Webhook Z-API received:", JSON.stringify(payload, null, 2))
 

@@ -72,6 +72,10 @@ export default function AgendarPage() {
         observacoes: "",
     })
 
+    // Disponibilidade por horário: { "09:00": 2, "10:00": 0, ... }
+    const [bookingsPerSlot, setBookingsPerSlot] = useState<Record<string, number>>({})
+    const [loadingAvailability, setLoadingAvailability] = useState(false)
+
     // 1. Carregar Previsão
     useEffect(() => {
         async function loadWeather() {
@@ -144,11 +148,63 @@ export default function AgendarPage() {
         loadStudioData()
     }, [supabase, slug])
 
+    // 3. Carregar disponibilidade quando mudar data ou serviço
+    useEffect(() => {
+        async function loadAvailability() {
+            if (!selectedDate || !selectedTipo || !studio) {
+                setBookingsPerSlot({})
+                return
+            }
+
+            setLoadingAvailability(true)
+            try {
+                const { data: bookings, error } = await supabase
+                    .from("agendamentos")
+                    .select("horario")
+                    .eq("studio_id", studio.id)
+                    .eq("data", selectedDate)
+                    .eq("servico_id", selectedTipo)
+                    .neq("status", "cancelado")
+
+                if (!error && bookings) {
+                    const counts: Record<string, number> = {}
+                    bookings.forEach((b: { horario: string }) => {
+                        counts[b.horario] = (counts[b.horario] || 0) + 1
+                    })
+                    setBookingsPerSlot(counts)
+                }
+            } catch (err) {
+                console.error("Erro ao verificar disponibilidade:", err)
+            } finally {
+                setLoadingAvailability(false)
+            }
+        }
+        loadAvailability()
+        // Limpar horário selecionado ao mudar serviço/data
+        setSelectedHorario("")
+    }, [selectedDate, selectedTipo, studio, supabase])
+
     // Horários disponíveis - usa os configurados pelo estúdio
     const horarios = studio?.horarios_funcionamento || [
         '08:00', '09:00', '10:00', '11:00', '12:00',
         '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
     ]
+
+    // Verificar se um horário está lotado
+    const servicoSelecionadoObj = servicos.find(s => s.id === selectedTipo)
+    const capacidadeServico = servicoSelecionadoObj?.capacidade ?? 1
+
+    const isSlotFull = (horario: string) => {
+        if (capacidadeServico === 0) return false // 0 = sem limite
+        const count = bookingsPerSlot[horario] || 0
+        return count >= capacidadeServico
+    }
+
+    const getVagasRestantes = (horario: string) => {
+        if (capacidadeServico === 0) return null // sem limite
+        const count = bookingsPerSlot[horario] || 0
+        return Math.max(0, capacidadeServico - count)
+    }
 
     const formatDate = (dateStr: string) => {
         if (!dateStr) return ""
@@ -200,7 +256,7 @@ export default function AgendarPage() {
 
             // Busca manual no array (não performático para muitos dados, mas ok para MVP)
             if (searchResult) {
-                const found = searchResult.find(c => c.telefone.replace(/\D/g, '') === telefoneLimpo)
+                const found = searchResult.find((c: { id: string; telefone: string }) => c.telefone.replace(/\D/g, '') === telefoneLimpo)
                 if (found) existingId = found.id
             }
 
@@ -276,7 +332,9 @@ export default function AgendarPage() {
                     selectedHorario,
                     servicoNome,
                     booking.id, // Passando ID para link de reagendamento
-                    slug
+                    slug,
+                    studio.telefone, // WhatsApp do estúdio para contato direto
+                    studio.nome_estudio // Nome do estúdio para identificação
                 ).catch(console.error)
 
                 // Boas-vindas para cliente novo
@@ -552,20 +610,44 @@ export default function AgendarPage() {
                                 {/* Time Slots */}
                                 <div>
                                     <Label className="text-lg mb-3 block">Horário</Label>
-                                    <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                                        {horarios.map((h) => (
-                                            <button
-                                                key={h}
-                                                onClick={() => setSelectedHorario(h)}
-                                                className={`py-3 px-4 rounded-lg font-mono font-medium transition-all ${selectedHorario === h
-                                                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
-                                                    : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
-                                                    }`}
-                                            >
-                                                {h}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    {loadingAvailability ? (
+                                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                                            {Array.from({ length: 8 }).map((_, i) => (
+                                                <div key={i} className="py-3 px-4 rounded-lg bg-gray-100 dark:bg-zinc-800 animate-pulse h-12" />
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                                            {horarios.map((h) => {
+                                                const full = isSlotFull(h)
+                                                const vagas = getVagasRestantes(h)
+                                                return (
+                                                    <button
+                                                        key={h}
+                                                        onClick={() => !full && setSelectedHorario(h)}
+                                                        disabled={full}
+                                                        className={`py-3 px-4 rounded-lg font-mono font-medium transition-all relative ${full
+                                                                ? "bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 opacity-50 cursor-not-allowed line-through"
+                                                                : selectedHorario === h
+                                                                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
+                                                                    : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
+                                                            }`}
+                                                    >
+                                                        {h}
+                                                        {full && (
+                                                            <span className="block text-[10px] text-red-500 font-sans font-normal no-underline" style={{ textDecoration: 'none' }}>Lotado</span>
+                                                        )}
+                                                        {!full && vagas !== null && capacidadeServico > 1 && (
+                                                            <span className={`block text-[10px] font-sans font-normal ${selectedHorario === h ? 'text-white/80' : 'text-green-600 dark:text-green-400'
+                                                                }`}>
+                                                                {vagas} vaga{vagas !== 1 ? 's' : ''}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex justify-between">

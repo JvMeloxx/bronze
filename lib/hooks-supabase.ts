@@ -24,6 +24,7 @@ export interface Servico {
     descricao: string
     preco: number
     duracao: number
+    capacidade: number
     ativo: boolean
     created_at: string
 }
@@ -429,7 +430,7 @@ export function useDashboardStatsDB() {
                     .gte("data", primeiroDiaMesStr)
             ])
 
-            const faturamentoTotal = faturamentoRes.data?.reduce((acc, curr) => acc + (curr.preco || 0), 0) || 0
+            const faturamentoTotal = faturamentoRes.data?.reduce((acc: number, curr: { preco?: number }) => acc + (curr.preco || 0), 0) || 0
 
             setStats({
                 agendamentosHoje: agendamentosHojeRes.data?.length || 0,

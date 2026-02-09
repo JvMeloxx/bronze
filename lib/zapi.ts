@@ -217,8 +217,8 @@ Qualquer dúvida, estamos à disposição! ✨`,
     /**
      * Confirmação de agendamento (envia após agendar)
      */
-    agendamentoConfirmado: (clienteNome: string, data: string, horario: string, tipo: string, agendamentoId: string, slug: string) =>
-        `☀️ *SunSync - Agendamento Confirmado!*
+    agendamentoConfirmado: (clienteNome: string, data: string, horario: string, tipo: string, agendamentoId: string, slug: string, telefoneEstudio: string, nomeEstudio: string) =>
+        `☀️ *${nomeEstudio.toUpperCase()} - Agendamento Confirmado!*
 
 Olá ${clienteNome}! 🎉
 
@@ -228,9 +228,11 @@ Seu agendamento foi confirmado com sucesso!
 ⏰ *Horário:* ${horario}
 💆 *Serviço:* ${tipo}
 
-🔄 *Precisou alterar?*
-Acesse seu link exclusivo para reagendar:
-${APP_BASE_URL}/${slug}/remarcar/${agendamentoId}
+📅 *Precisa remarcar?*
+Acesse: ${APP_BASE_URL}/${slug}/remarcar/${agendamentoId}
+
+📱 *Dúvidas ou cancelamento?*
+Fale direto com o estúdio: ${telefoneEstudio}
 
 Dicas para sua sessão:
 • Hidrate bem a pele no dia anterior
@@ -266,8 +268,8 @@ Acesse o dashboard para mais detalhes.`,
     /**
      * Confirmação Reagendamento (Cliente)
      */
-    agendamentoReagendadoCliente: (clienteNome: string, data: string, horario: string, tipo: string) =>
-        `☀️ *SunSync - Agendamento Alterado!*
+    agendamentoReagendadoCliente: (clienteNome: string, data: string, horario: string, tipo: string, nomeEstudio: string) =>
+        `☀️ *${nomeEstudio.toUpperCase()} - Agendamento Alterado!*
 
 Olá ${clienteNome}!
 
@@ -353,11 +355,13 @@ export async function enviarConfirmacaoAgendamento(
     horario: string,
     tipo: string,
     agendamentoId: string,
-    slug: string
+    slug: string,
+    telefoneEstudio: string,
+    nomeEstudio: string
 ): Promise<ZAPIResponse> {
     return sendTextMessage({
         phone: telefone,
-        message: MessageTemplates.agendamentoConfirmado(clienteNome, data, horario, tipo, agendamentoId, slug)
+        message: MessageTemplates.agendamentoConfirmado(clienteNome, data, horario, tipo, agendamentoId, slug, telefoneEstudio, nomeEstudio)
     })
 }
 
@@ -445,11 +449,12 @@ export async function enviarConfirmacaoReagendamentoCliente(
     clienteNome: string,
     data: string,
     horario: string,
-    tipo: string
+    tipo: string,
+    nomeEstudio: string
 ): Promise<ZAPIResponse> {
     return sendTextMessage({
         phone: telefone,
-        message: MessageTemplates.agendamentoReagendadoCliente(clienteNome, data, horario, tipo)
+        message: MessageTemplates.agendamentoReagendadoCliente(clienteNome, data, horario, tipo, nomeEstudio)
     })
 }
 
