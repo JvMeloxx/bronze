@@ -76,39 +76,39 @@ export default function AgendarPage() {
     const [bookingsPerSlot, setBookingsPerSlot] = useState<Record<string, number>>({})
     const [loadingAvailability, setLoadingAvailability] = useState(false)
 
-    // 1. Carregar Previsão
+    // Carregar tudo em paralelo: Previsão + Studio + Serviços
     useEffect(() => {
-        async function loadWeather() {
-            setLoadingWeather(true)
-            const forecast = await getWeatherForecast()
-            setWeather(forecast)
-            setLoadingWeather(false)
-        }
-        loadWeather()
-    }, [])
+        if (!slug) return
 
-    // 2. Carregar Dados do Studio e Serviços
-    useEffect(() => {
-        async function loadStudioData() {
-            if (!slug) return
-
+        async function loadAll() {
             setLoadingData(true)
-            try {
-                // Buscar studio pelo SLUG
-                const { data: studios, error: studioError } = await supabase
-                    .from("studios")
-                    .select("*")
-                    .eq("slug", slug)
-                    .eq("ativo", true)
-                    .single()
+            setLoadingWeather(true)
 
-                if (studioError || !studios) {
-                    console.error("Erro ao buscar studio:", studioError)
+            try {
+                // Disparar weather e studio ao MESMO tempo
+                const [forecastResult, studioResult] = await Promise.all([
+                    getWeatherForecast(),
+                    supabase
+                        .from("studios")
+                        .select("*")
+                        .eq("slug", slug)
+                        .eq("ativo", true)
+                        .single()
+                ])
+
+                // Weather
+                setWeather(forecastResult)
+                setLoadingWeather(false)
+
+                // Studio
+                if (studioResult.error || !studioResult.data) {
+                    console.error("Erro ao buscar studio:", studioResult.error)
                     setStudio(null)
+                    setLoadingData(false)
                     return
                 }
 
-                const currentStudio = studios
+                const currentStudio = studioResult.data
                 setStudio({
                     id: currentStudio.id,
                     nome_estudio: currentStudio.nome_estudio,
@@ -129,7 +129,7 @@ export default function AgendarPage() {
                     send_to_client: true
                 })
 
-                // Buscar serviços deste studio
+                // Buscar serviços em paralelo (já temos o studio_id)
                 const { data: servicosData, error: servicosError } = await supabase
                     .from("servicos")
                     .select("*")
@@ -143,10 +143,12 @@ export default function AgendarPage() {
                 console.error("Erro geral:", error)
             } finally {
                 setLoadingData(false)
+                setLoadingWeather(false)
             }
         }
-        loadStudioData()
-    }, [supabase, slug])
+        loadAll()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [slug])
 
     // 3. Carregar disponibilidade quando mudar data ou serviço
     useEffect(() => {
@@ -627,10 +629,10 @@ export default function AgendarPage() {
                                                         onClick={() => !full && setSelectedHorario(h)}
                                                         disabled={full}
                                                         className={`py-3 px-4 rounded-lg font-mono font-medium transition-all relative ${full
-                                                                ? "bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 opacity-50 cursor-not-allowed line-through"
-                                                                : selectedHorario === h
-                                                                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
-                                                                    : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
+                                                            ? "bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 opacity-50 cursor-not-allowed line-through"
+                                                            : selectedHorario === h
+                                                                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
+                                                                : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
                                                             }`}
                                                     >
                                                         {h}
