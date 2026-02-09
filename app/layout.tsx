@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Providers } from "./providers";
 
 export const viewport: Viewport = {
   themeColor: "#f97316",
@@ -35,9 +34,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body className="antialiased font-sans">
-        <Providers>
-          {children}
-        </Providers>
+        {children}
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -55,3 +52,4 @@ export default function RootLayout({
     </html>
   );
 }
+
