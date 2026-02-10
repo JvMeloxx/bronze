@@ -53,19 +53,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const isAdmin = user?.email ? adminEmails.includes(user.email) : false
 
-    // Buscar dados do studio
-    const fetchStudio = async (userId: string) => {
-        const { data, error } = await supabase
-            .from("studios")
-            .select("*")
-            .eq("user_id", userId)
-            .single()
+    // Buscar dados do studio com retry
+    const fetchStudio = async (userId: string, retryCount = 0): Promise<Studio | null> => {
+        try {
+            const { data, error } = await supabase
+                .from("studios")
+                .select("*")
+                .eq("user_id", userId)
+                .single()
 
-        if (error) {
-            console.error("Erro ao buscar studio:", error)
+            if (error) {
+                // Se for AbortError ou erro de rede, tentar novamente
+                if (retryCount < 2 && (error.message?.includes('Abort') || error.message?.includes('fetch'))) {
+                    console.warn(`[AUTH] fetchStudio retry ${retryCount + 1}...`)
+                    await new Promise(r => setTimeout(r, 1000))
+                    return fetchStudio(userId, retryCount + 1)
+                }
+                console.error("Erro ao buscar studio:", error)
+                return null
+            }
+            return data as Studio
+        } catch (e) {
+            // Catch AbortError at JS level
+            if (retryCount < 2) {
+                console.warn(`[AUTH] fetchStudio exception retry ${retryCount + 1}...`)
+                await new Promise(r => setTimeout(r, 1000))
+                return fetchStudio(userId, retryCount + 1)
+            }
+            console.error("Erro ao buscar studio (exception):", e)
             return null
         }
-        return data as Studio
     }
 
     const refreshStudio = async () => {
@@ -119,12 +136,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Listener para mudanças de auth
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event: string, session: Session | null) => {
+                console.log('[AUTH] onAuthStateChange:', _event)
                 setSession(session)
                 setUser(session?.user ?? null)
 
                 if (session?.user) {
-                    const studioData = await fetchStudio(session.user.id)
-                    setStudio(studioData)
+                    // Buscar studio com pequeno delay para evitar race condition
+                    setTimeout(async () => {
+                        const studioData = await fetchStudio(session.user.id)
+                        console.log('[AUTH] Studio fetched in listener:', !!studioData)
+                        setStudio(studioData)
+                    }, 100)
                 } else {
                     setStudio(null)
                 }
@@ -138,11 +160,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [])
 
     const signIn = async (email: string, password: string) => {
-        const { error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        })
-        return { error }
+        console.log('[AUTH] signIn called...')
+        try {
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
+            console.log('[AUTH] signInWithPassword resolved, error:', error?.message || 'none')
+            return { error }
+        } catch (e) {
+            console.error('[AUTH] signInWithPassword EXCEPTION:', e)
+            return { error: e as Error }
+        }
     }
 
     const signUp = async (email: string, password: string) => {
