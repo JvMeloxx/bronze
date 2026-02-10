@@ -357,6 +357,38 @@ export default function AdminPage() {
                                                                 className="bg-zinc-800 border-zinc-700"
                                                             />
                                                         </div>
+                                                        <div className="grid grid-cols-2 gap-4">
+                                                            <div className="space-y-2">
+                                                                <Label>Latitude</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    step="any"
+                                                                    value={editingStudio?.latitude || ""}
+                                                                    onChange={(e) =>
+                                                                        setEditingStudio(prev =>
+                                                                            prev ? { ...prev, latitude: parseFloat(e.target.value) } : null
+                                                                        )
+                                                                    }
+                                                                    className="bg-zinc-800 border-zinc-700"
+                                                                    placeholder="-23.5505"
+                                                                />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label>Longitude</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    step="any"
+                                                                    value={editingStudio?.longitude || ""}
+                                                                    onChange={(e) =>
+                                                                        setEditingStudio(prev =>
+                                                                            prev ? { ...prev, longitude: parseFloat(e.target.value) } : null
+                                                                        )
+                                                                    }
+                                                                    className="bg-zinc-800 border-zinc-700"
+                                                                    placeholder="-46.6333"
+                                                                />
+                                                            </div>
+                                                        </div>
                                                         <div className="flex items-center justify-between">
                                                             <Label>Studio Ativo</Label>
                                                             <Switch
