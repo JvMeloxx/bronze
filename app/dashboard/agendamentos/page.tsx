@@ -191,13 +191,7 @@ export default function AgendamentosPage() {
 
             if (telefone && nome) {
                 try {
-                    if (newStatus === "realizado") {
-                        // Mensagem pós-sessão
-                        await sendTextMessage({
-                            phone: telefone,
-                            message: MessageTemplates.posSessao(nome)
-                        })
-                    } else if (newStatus === "cancelado") {
+                    if (newStatus === "cancelado") {
                         // Mensagem de cancelamento
                         await sendTextMessage({
                             phone: telefone,

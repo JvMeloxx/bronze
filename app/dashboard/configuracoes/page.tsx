@@ -52,6 +52,7 @@ export default function ConfiguracoesPage() {
         payment_policy: "",
         slug: "",
         horarios_funcionamento: ALL_HOURS, // Horários de funcionamento
+        location_url: "",
     })
 
     // Populate form data when config is loaded
@@ -68,6 +69,7 @@ export default function ConfiguracoesPage() {
                 payment_policy: config.payment_policy || "",
                 slug: config.slug || "",
                 horarios_funcionamento: (config.horarios_funcionamento as string[]) || ALL_HOURS,
+                location_url: config.location_url || "",
             })
         }
     }, [config])
@@ -86,7 +88,8 @@ export default function ConfiguracoesPage() {
             signal_percentage: formData.signal_percentage,
             payment_policy: formData.payment_policy,
             slug: formData.slug,
-            horarios_funcionamento: formData.horarios_funcionamento
+            horarios_funcionamento: formData.horarios_funcionamento,
+            location_url: formData.location_url
         })
 
         if (success) {
@@ -235,6 +238,42 @@ export default function ConfiguracoesPage() {
                 </CardContent>
             </Card>
 
+            {/* Card Localização */}
+            <Card className="border-amber-200 dark:border-amber-800">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <span className="text-2xl">📍</span>
+                        Localização
+                    </CardTitle>
+                    <CardDescription>
+                        Configure o link do Google Maps para enviar na confirmação
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="locationUrl">Link do Google Maps</Label>
+                        <Input
+                            id="locationUrl"
+                            value={formData.location_url}
+                            onChange={(e) =>
+                                setFormData({ ...formData, location_url: e.target.value })
+                            }
+                            placeholder="https://maps.app.goo.gl/..."
+                            className="border-amber-200 dark:border-amber-800"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                            Este link será enviado no WhatsApp de confirmação para o cliente
+                        </p>
+                    </div>
+                    <Button
+                        size="lg"
+                        onClick={handleSave}
+                        className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                    >
+                        💾 Salvar Localização
+                    </Button>
+                </CardContent>
+            </Card>
             {/* Card Horários de Funcionamento */}
             <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
                 <CardHeader>
@@ -320,10 +359,10 @@ export default function ConfiguracoesPage() {
                         💾 Salvar Horários
                     </Button>
                 </CardContent>
-            </Card>
+            </Card >
 
             {/* Card Principal */}
-            <Card className="border-amber-200 dark:border-amber-800">
+            < Card className="border-amber-200 dark:border-amber-800" >
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <span className="text-2xl">📱</span>
@@ -399,10 +438,10 @@ export default function ConfiguracoesPage() {
                         💾 Salvar Configurações
                     </Button>
                 </CardContent>
-            </Card>
+            </Card >
 
             {/* Card Pagamento PIX */}
-            <Card className="border-green-200 dark:border-green-800">
+            < Card className="border-green-200 dark:border-green-800" >
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <span className="text-2xl">💳</span>
@@ -544,10 +583,10 @@ export default function ConfiguracoesPage() {
                         💾 Salvar Configurações de Pagamento
                     </Button>
                 </CardContent>
-            </Card>
+            </Card >
 
             {/* Preview de Mensagens */}
-            <Card className="border-amber-200 dark:border-amber-800">
+            < Card className="border-amber-200 dark:border-amber-800" >
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <span className="text-2xl">💬</span>
@@ -591,7 +630,7 @@ Até amanhã! ✨`}
                         </div>
                     </div>
                 </CardContent>
-            </Card>
-        </div>
+            </Card >
+        </div >
     )
 }

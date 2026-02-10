@@ -22,6 +22,7 @@ interface Studio {
     owner_phone: string
     slug: string
     horarios_funcionamento: string[]
+    location_url?: string
 }
 
 interface AuthContextType {

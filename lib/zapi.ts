@@ -217,7 +217,7 @@ Qualquer dúvida, estamos à disposição! ✨`,
     /**
      * Confirmação de agendamento (envia após agendar)
      */
-    agendamentoConfirmado: (clienteNome: string, data: string, horario: string, tipo: string, agendamentoId: string, slug: string, telefoneEstudio: string, nomeEstudio: string) =>
+    agendamentoConfirmado: (clienteNome: string, data: string, horario: string, tipo: string, agendamentoId: string, slug: string, telefoneEstudio: string, nomeEstudio: string, locationUrl?: string) =>
         `☀️ *${nomeEstudio.toUpperCase()} - Agendamento Confirmado!*
 
 Olá ${clienteNome}! 🎉
@@ -227,7 +227,7 @@ Seu agendamento foi confirmado com sucesso!
 📅 *Data:* ${data}
 ⏰ *Horário:* ${horario}
 💆 *Serviço:* ${tipo}
-
+${locationUrl ? `\n📍 *Localização:* ${locationUrl}\n` : ""}
 📅 *Precisa remarcar?*
 Acesse: ${APP_BASE_URL}/${slug}/remarcar/${agendamentoId}
 
@@ -357,11 +357,12 @@ export async function enviarConfirmacaoAgendamento(
     agendamentoId: string,
     slug: string,
     telefoneEstudio: string,
-    nomeEstudio: string
+    nomeEstudio: string,
+    locationUrl?: string
 ): Promise<ZAPIResponse> {
     return sendTextMessage({
         phone: telefone,
-        message: MessageTemplates.agendamentoConfirmado(clienteNome, data, horario, tipo, agendamentoId, slug, telefoneEstudio, nomeEstudio)
+        message: MessageTemplates.agendamentoConfirmado(clienteNome, data, horario, tipo, agendamentoId, slug, telefoneEstudio, nomeEstudio, locationUrl)
     })
 }
 

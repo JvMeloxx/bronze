@@ -42,6 +42,7 @@ interface StudioPublicConfig {
     notifications_enabled: boolean
     owner_phone: string
     horarios_funcionamento: string[] // Horários que o estúdio atende
+    location_url?: string
     // Flag interna para saber se deve enviar msg
     send_to_owner: boolean
     send_to_client: boolean
@@ -56,6 +57,8 @@ export default function AgendarPage() {
     const [loadingWeather, setLoadingWeather] = useState(true)
     const [submitting, setSubmitting] = useState(false)
     const [loadingData, setLoadingData] = useState(true)
+    const [viewMode, setViewMode] = useState<"weather" | "calendar">("weather")
+    const [currentMonth, setCurrentMonth] = useState(new Date())
 
     // Dados do Banco
     const [studio, setStudio] = useState<StudioPublicConfig | null>(null)
@@ -125,6 +128,7 @@ export default function AgendarPage() {
                         '08:00', '09:00', '10:00', '11:00', '12:00',
                         '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
                     ],
+                    location_url: currentStudio.location_url,
                     send_to_owner: true,
                     send_to_client: true
                 })
@@ -336,7 +340,8 @@ export default function AgendarPage() {
                     booking.id, // Passando ID para link de reagendamento
                     slug,
                     studio.telefone, // WhatsApp do estúdio para contato direto
-                    studio.nome_estudio // Nome do estúdio para identificação
+                    studio.nome_estudio, // Nome do estúdio para identificação
+                    studio.location_url // Link de localização
                 ).catch(console.error)
 
                 // Boas-vindas para cliente novo
@@ -475,35 +480,133 @@ export default function AgendarPage() {
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                                        {weather.slice(0, 14).map((day) => (
-                                            <button
-                                                key={day.date}
-                                                onClick={() => setSelectedDate(day.date)}
-                                                className={`p-4 rounded-xl text-center transition-all hover:scale-105 ${selectedDate === day.date
-                                                    ? "bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30"
-                                                    : day.isSunny
-                                                        ? "bg-white dark:bg-zinc-800 border-2 border-amber-300 dark:border-amber-600 hover:border-amber-500"
-                                                        : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 opacity-80"
-                                                    }`}
-                                            >
-                                                <span className="text-xs uppercase block mb-1">
-                                                    {formatDate(day.date).split(",")[0]}
-                                                </span>
-                                                <span className="text-4xl block mb-1">{day.icon}</span>
-                                                <span className="text-lg font-bold block">
-                                                    {new Date(day.date + "T00:00:00").getDate()}
-                                                </span>
-                                                <span className="text-sm block">
-                                                    {day.tempMax}°/{day.tempMin}°
-                                                </span>
-                                                {day.isSunny && (
-                                                    <Badge variant="amber" className="text-xs mt-1">
-                                                        ☀️ Sol
-                                                    </Badge>
-                                                )}
-                                            </button>
-                                        ))}
+                                    <div>
+                                        <div className="flex justify-center mb-6">
+                                            <div className="bg-gray-100 dark:bg-zinc-800 p-1 rounded-lg inline-flex">
+                                                <button
+                                                    onClick={() => setViewMode("weather")}
+                                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === "weather"
+                                                        ? "bg-white dark:bg-zinc-700 shadow text-amber-600"
+                                                        : "text-muted-foreground hover:text-foreground"
+                                                        }`}
+                                                >
+                                                    ☀️ Previsão (14 dias)
+                                                </button>
+                                                <button
+                                                    onClick={() => setViewMode("calendar")}
+                                                    className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === "calendar"
+                                                        ? "bg-white dark:bg-zinc-700 shadow text-amber-600"
+                                                        : "text-muted-foreground hover:text-foreground"
+                                                        }`}
+                                                >
+                                                    📅 Calendário Mensal
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {viewMode === "weather" ? (
+                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                                                {weather.slice(0, 14).map((day) => (
+                                                    <button
+                                                        key={day.date}
+                                                        onClick={() => setSelectedDate(day.date)}
+                                                        className={`p-4 rounded-xl text-center transition-all hover:scale-105 ${selectedDate === day.date
+                                                            ? "bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30"
+                                                            : day.isSunny
+                                                                ? "bg-white dark:bg-zinc-800 border-2 border-amber-300 dark:border-amber-600 hover:border-amber-500"
+                                                                : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 opacity-80"
+                                                            }`}
+                                                    >
+                                                        <span className="text-xs uppercase block mb-1">
+                                                            {formatDate(day.date).split(",")[0]}
+                                                        </span>
+                                                        <span className="text-4xl block mb-1">{day.icon}</span>
+                                                        <span className="text-lg font-bold block">
+                                                            {new Date(day.date + "T00:00:00").getDate()}
+                                                        </span>
+                                                        <span className="text-sm block">
+                                                            {day.tempMax}°/{day.tempMin}°
+                                                        </span>
+                                                        {day.isSunny && (
+                                                            <Badge variant="amber" className="text-xs mt-1">
+                                                                ☀️ Sol
+                                                            </Badge>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="bg-white dark:bg-zinc-900 rounded-xl p-4 border border-amber-200 dark:border-amber-800">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const newDate = new Date(currentMonth)
+                                                            newDate.setMonth(newDate.getMonth() - 1)
+                                                            setCurrentMonth(newDate)
+                                                        }}
+                                                    >
+                                                        ←
+                                                    </Button>
+                                                    <span className="font-bold text-lg capitalize">
+                                                        {currentMonth.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}
+                                                    </span>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            const newDate = new Date(currentMonth)
+                                                            newDate.setMonth(newDate.getMonth() + 1)
+                                                            setCurrentMonth(newDate)
+                                                        }}
+                                                    >
+                                                        →
+                                                    </Button>
+                                                </div>
+                                                <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                                                    {["D", "S", "T", "Q", "Q", "S", "S"].map(d => (
+                                                        <div key={d} className="text-xs font-bold text-muted-foreground">{d}</div>
+                                                    ))}
+                                                </div>
+                                                <div className="grid grid-cols-7 gap-1">
+                                                    {/* Empty slots for start of month */}
+                                                    {Array.from({ length: new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay() }).map((_, i) => (
+                                                        <div key={`empty-${i}`} />
+                                                    ))}
+                                                    {/* Days */}
+                                                    {Array.from({ length: new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate() }).map((_, i) => {
+                                                        const day = i + 1
+                                                        const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
+                                                        const dateStr = date.toISOString().split("T")[0]
+                                                        const isSelected = selectedDate === dateStr
+                                                        const isToday = dateStr === new Date().toISOString().split("T")[0]
+                                                        const isPast = date < new Date(new Date().setHours(0, 0, 0, 0))
+
+                                                        return (
+                                                            <button
+                                                                key={day}
+                                                                disabled={isPast}
+                                                                onClick={() => setSelectedDate(dateStr)}
+                                                                className={`
+                                                                h-10 w-full rounded-md flex items-center justify-center text-sm transition-colors
+                                                                ${isSelected
+                                                                        ? "bg-amber-500 text-white font-bold"
+                                                                        : isToday
+                                                                            ? "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-300"
+                                                                            : isPast
+                                                                                ? "text-gray-300 dark:text-zinc-600 cursor-not-allowed"
+                                                                                : "hover:bg-gray-100 dark:hover:bg-zinc-800"
+                                                                    }
+                                                            `}
+                                                            >
+                                                                {day}
+                                                            </button>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -564,17 +667,17 @@ export default function AgendarPage() {
                         {step === 2 && (
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 {/* Selected Date Summary */}
-                                {selectedWeather && (
-                                    <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                                        <span className="text-3xl">{selectedWeather.icon}</span>
-                                        <div>
-                                            <p className="font-medium">{formatDate(selectedDate)}</p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {selectedWeather.description} • {selectedWeather.tempMax}°C
-                                            </p>
-                                        </div>
+                                <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                                    <span className="text-3xl">{selectedWeather ? selectedWeather.icon : "📅"}</span>
+                                    <div>
+                                        <p className="font-medium">{formatDate(selectedDate)}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                            {selectedWeather
+                                                ? `${selectedWeather.description} • ${selectedWeather.tempMax}°C`
+                                                : "Data selecionada"}
+                                        </p>
                                     </div>
-                                )}
+                                </div>
 
                                 {/* Services */}
                                 <div>
@@ -770,6 +873,6 @@ export default function AgendarPage() {
                     © 2026 SunSync. Todos os direitos reservados.
                 </p>
             </footer>
-        </div>
+        </div >
     )
 }
