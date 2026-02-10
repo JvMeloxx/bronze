@@ -98,7 +98,7 @@ export default function AdminPage() {
         if (!editingStudio) return
 
         setSaving(true)
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from("studios")
             .update({
                 nome_estudio: editingStudio.nome_estudio,
@@ -108,10 +108,14 @@ export default function AdminPage() {
                 drive_artes_link: editingStudio.drive_artes_link,
             })
             .eq("id", editingStudio.id)
+            .select()
 
         if (error) {
             console.error("Erro ao atualizar studio:", error)
-            alert("Erro ao salvar!")
+            alert("Erro ao salvar: " + error.message)
+        } else if (!data || data.length === 0) {
+            console.error("Update retornou 0 linhas - provável bloqueio de RLS")
+            alert("Erro: Sem permissão para editar este studio. Verifique as políticas RLS no Supabase.")
         } else {
             await fetchStudios()
             setDialogOpen(false)
@@ -122,12 +126,18 @@ export default function AdminPage() {
 
     // Toggle ativo
     const toggleAtivo = async (studio: Studio) => {
-        const { error } = await supabase
+        const { data, error } = await supabase
             .from("studios")
             .update({ ativo: !studio.ativo })
             .eq("id", studio.id)
+            .select()
 
-        if (!error) {
+        if (error) {
+            console.error("Erro ao toggle ativo:", error)
+            alert("Erro: " + error.message)
+        } else if (!data || data.length === 0) {
+            alert("Erro: Sem permissão para alterar este studio.")
+        } else {
             setStudios(prev =>
                 prev.map(s => s.id === studio.id ? { ...s, ativo: !s.ativo } : s)
             )
