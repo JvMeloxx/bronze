@@ -32,7 +32,13 @@ function StatCardSkeleton() {
     )
 }
 
+import { WeatherWidget } from "@/components/ui/weather-widget" // Assuming I'll move it to ui or fix import path
+import { useAuth } from "@/lib/auth-context"
+
+// ... imports remain the same
+
 export default function DashboardPage() {
+    const { studio } = useAuth()
     const {
         agendamentosHoje,
         clientesAtivos,
@@ -48,11 +54,22 @@ export default function DashboardPage() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Welcome Section */}
-            <div>
-                <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-                <p className="text-muted-foreground">
-                    Visão geral do seu studio de bronzeamento
-                </p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
+                    <p className="text-muted-foreground">
+                        Visão geral do seu studio de bronzeamento
+                    </p>
+                </div>
+                {studio?.latitude && studio?.longitude && (
+                    <div className="w-full md:w-auto">
+                        <WeatherWidget
+                            latitude={studio.latitude}
+                            longitude={studio.longitude}
+                            establishmentName={studio.nome_estudio}
+                        />
+                    </div>
+                )}
             </div>
 
             {/* Stats Cards */}

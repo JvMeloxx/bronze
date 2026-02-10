@@ -49,6 +49,8 @@ interface Studio {
     plano: "basico" | "profissional"
     ativo: boolean
     drive_artes_link: string
+    latitude?: number
+    longitude?: number
     created_at: string
 }
 
@@ -106,6 +108,8 @@ export default function AdminPage() {
                 plano: editingStudio.plano,
                 ativo: editingStudio.ativo,
                 drive_artes_link: editingStudio.drive_artes_link,
+                latitude: editingStudio.latitude,
+                longitude: editingStudio.longitude,
             })
             .eq("id", editingStudio.id)
             .select()

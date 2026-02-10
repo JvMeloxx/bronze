@@ -23,6 +23,8 @@ interface Studio {
     slug: string
     horarios_funcionamento: string[]
     location_url?: string
+    latitude?: number
+    longitude?: number
 }
 
 interface AuthContextType {
