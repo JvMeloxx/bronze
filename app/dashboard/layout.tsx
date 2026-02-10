@@ -2,13 +2,13 @@
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { AuthProvider, useAuth } from "@/lib/auth-context"
+import { useAuth } from "@/lib/auth-context"
 import { Sidebar, MobileNav } from "@/components/Sidebar"
 import { Button } from "@/components/ui/button"
 import { ToastProvider } from "@/components/ui/toast"
 import { Badge } from "@/components/ui/badge"
 
-function DashboardContent({
+export default function DashboardLayout({
     children,
 }: {
     children: React.ReactNode
@@ -100,17 +100,5 @@ function DashboardContent({
                 <MobileNav />
             </div>
         </ToastProvider>
-    )
-}
-
-export default function DashboardLayout({
-    children,
-}: {
-    children: React.ReactNode
-}) {
-    return (
-        <AuthProvider>
-            <DashboardContent>{children}</DashboardContent>
-        </AuthProvider>
     )
 }
