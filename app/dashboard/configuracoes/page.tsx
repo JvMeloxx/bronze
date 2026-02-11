@@ -65,7 +65,6 @@ export default function ConfiguracoesPage() {
         payment_policy: "",
         slug: "",
         horarios_funcionamento: {} as Record<string, string[]>, // Agora é um objeto
-        horarios_funcionamento: {} as Record<string, string[]>,
         location_url: "",
         card_url: "",
     })
