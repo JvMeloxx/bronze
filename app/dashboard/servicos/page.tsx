@@ -21,10 +21,20 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/toast"
 import { useServicosDB, Servico } from "@/lib/hooks-supabase"
 import { formatarMoeda } from "@/lib/utils"
+// @ts-ignore
+import { ScheduleEditor } from "@/components/schedule-editor"
+import { Switch } from "@/components/ui/switch"
 
 export default function ServicosPage() {
     const { addToast } = useToast()
@@ -40,6 +50,9 @@ export default function ServicosPage() {
         preco: 0,
         duracao: "30 min",
         capacidade: 1,
+        categoria: "natural" as "natural" | "artificial",
+        use_custom_schedule: false,
+        horarios: {} as Record<string, string[]>
     })
 
     const resetForm = () => {
@@ -49,6 +62,9 @@ export default function ServicosPage() {
             preco: 0,
             duracao: "30 min",
             capacidade: 1,
+            categoria: "natural",
+            use_custom_schedule: false,
+            horarios: {}
         })
         setEditingServico(null)
     }
@@ -58,10 +74,13 @@ export default function ServicosPage() {
             setEditingServico(servico)
             setFormData({
                 nome: servico.nome,
-                descricao: servico.descricao,
+                descricao: servico.descricao || "",
                 preco: servico.preco,
                 duracao: servico.duracao.toString() + " min",
                 capacidade: servico.capacidade ?? 1,
+                categoria: servico.categoria || "natural",
+                use_custom_schedule: !!servico.horarios,
+                horarios: servico.horarios || {}
             })
         } else {
             resetForm()
@@ -81,24 +100,24 @@ export default function ServicosPage() {
         // Converter duração string para numero (minutos)
         const duracaoMinutos = parseInt(formData.duracao.replace(/\D/g, '')) || 30
 
+        const payload = {
+            nome: formData.nome,
+            descricao: formData.descricao,
+            preco: formData.preco,
+            duracao: duracaoMinutos,
+            capacidade: formData.capacidade,
+            categoria: formData.categoria,
+            horarios: formData.use_custom_schedule ? formData.horarios : null
+        }
+
         if (editingServico) {
             // Atualizar
-            success = await updateServico(editingServico.id, {
-                nome: formData.nome,
-                descricao: formData.descricao,
-                preco: formData.preco,
-                duracao: duracaoMinutos,
-                capacidade: formData.capacidade
-            })
+            success = await updateServico(editingServico.id, payload)
             if (success) addToast({ title: "Sucesso!", description: "Serviço atualizado", variant: "success" })
         } else {
             // Criar novo
             const newServico = await addServico({
-                nome: formData.nome,
-                descricao: formData.descricao,
-                preco: formData.preco,
-                duracao: duracaoMinutos,
-                capacidade: formData.capacidade,
+                ...payload,
                 ativo: true
             })
             if (newServico) {
@@ -161,26 +180,44 @@ export default function ServicosPage() {
                             + Novo Serviço
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>
                                 {editingServico ? "Editar Serviço" : "Novo Serviço"}
                             </DialogTitle>
                             <DialogDescription>
-                                Configure os detalhes do serviço
+                                Configure os detalhes e horários do serviço
                             </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="nome">Nome do Serviço *</Label>
-                                <Input
-                                    id="nome"
-                                    value={formData.nome}
-                                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                                    placeholder="Ex: Bronzeamento Natural"
-                                    className="border-amber-200 dark:border-amber-800"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="categoria">Categoria</Label>
+                                    <Select
+                                        value={formData.categoria}
+                                        onValueChange={(val: "natural" | "artificial") => setFormData({ ...formData, categoria: val })}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Selecione" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="natural">☀️ Bronze Natural (Sol)</SelectItem>
+                                            <SelectItem value="artificial">💡 Bronze Artificial (Cabine)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="nome">Nome do Serviço *</Label>
+                                    <Input
+                                        id="nome"
+                                        value={formData.nome}
+                                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                                        placeholder="Ex: Bronzeamento Natural"
+                                        className="border-amber-200 dark:border-amber-800"
+                                    />
+                                </div>
                             </div>
+
                             <div className="space-y-2">
                                 <Label htmlFor="descricao">Descrição</Label>
                                 <Textarea
@@ -191,7 +228,8 @@ export default function ServicosPage() {
                                     className="border-amber-200 dark:border-amber-800"
                                 />
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+
+                            <div className="grid grid-cols-3 gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="preco">Preço (R$) *</Label>
                                     <Input
@@ -205,7 +243,7 @@ export default function ServicosPage() {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="duracao">Duração (apenas números)</Label>
+                                    <Label htmlFor="duracao">Duração</Label>
                                     <Input
                                         id="duracao"
                                         value={formData.duracao}
@@ -214,21 +252,46 @@ export default function ServicosPage() {
                                         className="border-amber-200 dark:border-amber-800"
                                     />
                                 </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="capacidade">Capacidade</Label>
+                                    <Input
+                                        id="capacidade"
+                                        type="number"
+                                        min="0"
+                                        value={formData.capacidade}
+                                        onChange={(e) => setFormData({ ...formData, capacidade: parseInt(e.target.value) || 0 })}
+                                        placeholder="Ex: 1"
+                                        className="border-amber-200 dark:border-amber-800"
+                                    />
+                                </div>
                             </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="capacidade">Capacidade por horário</Label>
-                                <Input
-                                    id="capacidade"
-                                    type="number"
-                                    min="0"
-                                    value={formData.capacidade}
-                                    onChange={(e) => setFormData({ ...formData, capacidade: parseInt(e.target.value) || 0 })}
-                                    placeholder="Ex: 1"
-                                    className="border-amber-200 dark:border-amber-800"
-                                />
-                                <p className="text-xs text-muted-foreground">
-                                    Quantos clientes podem agendar no mesmo horário. 0 = sem limite.
-                                </p>
+
+                            {/* Horários Específicos */}
+                            <div className="space-y-4 pt-4 border-t">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-base">Horários Específicos</Label>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-muted-foreground">
+                                            {formData.use_custom_schedule ? "Personalizado" : "Usar horários do estúdio"}
+                                        </span>
+                                        <Switch
+                                            checked={formData.use_custom_schedule}
+                                            onCheckedChange={(checked) => setFormData({ ...formData, use_custom_schedule: checked })}
+                                        />
+                                    </div>
+                                </div>
+
+                                {formData.use_custom_schedule && (
+                                    <div className="animate-in slide-in-from-top-2">
+                                        <ScheduleEditor
+                                            schedule={formData.horarios}
+                                            onChange={(newSchedule) => setFormData({ ...formData, horarios: newSchedule })}
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-2">
+                                            Configure quais horários este serviço está disponível. Se um dia estiver vazio, o serviço não aparecerá para agendamento nesse dia.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <DialogFooter>
@@ -274,11 +337,16 @@ export default function ServicosPage() {
                             <CardHeader className="pb-2">
                                 <div className="flex items-start justify-between">
                                     <div className="space-y-1">
-                                        <CardTitle className="text-xl flex items-center gap-2">
-                                            {servico.nome}
+                                        < div className="flex items-center gap-2" >
+                                            <Badge variant={servico.categoria === 'artificial' ? "secondary" : "default"} className="mb-1">
+                                                {servico.categoria === 'artificial' ? "💡 Artificial" : "☀️ Natural"}
+                                            </Badge>
                                             {!servico.ativo && (
-                                                <Badge variant="secondary" className="text-xs">Inativo</Badge>
+                                                <Badge variant="outline" className="text-muted-foreground">Inativo</Badge>
                                             )}
+                                        </div>
+                                        <CardTitle className="text-xl">
+                                            {servico.nome}
                                         </CardTitle>
                                         <CardDescription className="line-clamp-2">
                                             {servico.descricao}
@@ -301,6 +369,12 @@ export default function ServicosPage() {
                                     </div>
                                 </div>
 
+                                {servico.horarios && (
+                                    <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                                        🕒 Possui horários específicos
+                                    </div>
+                                )}
+
                                 <div className="flex gap-2">
                                     <Button
                                         variant="outline"
@@ -322,6 +396,7 @@ export default function ServicosPage() {
                                         size="sm"
                                         onClick={() => handleDelete(servico.id)}
                                         className="hover:text-red-600"
+                                        disabled={!servico.ativo} // Proteger deleção acidental? Não, melhor deixar deletar. Ajuste: removido disabled.
                                     >
                                         🗑️
                                     </Button>

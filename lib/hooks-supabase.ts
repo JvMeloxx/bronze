@@ -27,6 +27,8 @@ export interface Servico {
     capacidade: number
     ativo: boolean
     created_at: string
+    categoria: "natural" | "artificial"
+    horarios: Record<string, string[]> | null
 }
 
 export interface Agendamento {
