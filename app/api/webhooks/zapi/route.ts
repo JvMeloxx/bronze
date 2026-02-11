@@ -119,18 +119,23 @@ export async function POST(request: Request) {
             if (!phone) return NextResponse.json({ status: "ignored_no_phone" })
 
             // Verificar se cliente tem agendamento recente CONFIRMADO (últimas 24h)
-            // e se ainda não recebeu o card (opcional, pode ser complexo controlar o estado "card_entregue")
-            // Simplificação: Se tiver agendamento futuro confirmado, manda o card.
+            // Lógica de Matching Robusta:
+            // O Z-API manda ex: 5561992415188
+            // O Banco pode ter: (61) 99241-5188
+            // Vamos buscar pelos últimos 8 dígitos para garantir
 
-            // Buscar agendamento futuro confirmado deste telefone
+            const cleanPhone = phone.replace(/\D/g, "")
+            const last8 = cleanPhone.slice(-8)
+
+            // Buscar agendamento futuro confirmado deste telefone (busca flexível)
             const { data: agendamentos } = await supabase
                 .from("agendamentos")
-                .select("id, studio_id, data")
-                .eq("telefone", phone) // Telefone do cliente
+                .select("id, studio_id, data, telefone")
                 .eq("status", "confirmado")
                 .gte("data", new Date().toISOString().split('T')[0]) // Agendamentos hoje ou futuro
+                .ilike("telefone", `%${last8}`) // Busca pelos últimos 8 dígitos
                 .order("created_at", { ascending: false })
-                .limit(1)
+                .limit(5) // Pega alguns para garantir filtro correto no JS
 
             if (agendamentos && agendamentos.length > 0) {
                 const agendamento = agendamentos[0]

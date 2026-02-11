@@ -360,8 +360,30 @@ export default function ConfiguracoesPage() {
                                     variant="destructive"
                                     size="sm"
                                     onClick={async () => {
-                                        setFormData({ ...formData, card_url: "" })
-                                        await handleSave() // Salva para remover do banco
+                                        const newFormData = { ...formData, card_url: "" }
+                                        setFormData(newFormData)
+
+                                        // Salvar diretamente com os dados atualizados
+                                        if (updateConfig) {
+                                            const success = await updateConfig({
+                                                owner_phone: newFormData.owner_phone,
+                                                notifications_enabled: newFormData.notifications_enabled,
+                                                pix_enabled: newFormData.pix_enabled,
+                                                pix_key: newFormData.pix_key,
+                                                pix_key_type: newFormData.pix_key_type,
+                                                establishment_name: newFormData.establishment_name,
+                                                signal_percentage: newFormData.signal_percentage,
+                                                payment_policy: newFormData.payment_policy,
+                                                slug: newFormData.slug,
+                                                horarios_funcionamento: newFormData.horarios_funcionamento,
+                                                location_url: newFormData.location_url,
+                                                card_url: "" // Forçar vazio
+                                            })
+                                            if (success) {
+                                                addToast({ title: "Imagem removida com sucesso!" })
+                                                refreshConfig()
+                                            }
+                                        }
                                     }}
                                 >
                                     🗑️ Remover Imagem
