@@ -120,7 +120,7 @@ export default function AgendarPage() {
                     notifications_enabled: currentStudio.notifications_enabled ?? false,
                     owner_phone: currentStudio.owner_phone || "",
                     horarios_funcionamento: currentStudio.horarios_funcionamento || [
-                        '08:00', '09:00', '10:00', '11:00', '12:00',
+                        '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
                         '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
                     ],
                     location_url: currentStudio.location_url,
