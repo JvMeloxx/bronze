@@ -239,7 +239,7 @@ Sua sessão de bronzeamento é *AMANHÃ* às *${horario}*!
 
 ⚠️ *ATENÇÃO:* Caso o clima esteja *CHUVOSO*, entre em contato imediatamente para reagendar! Bronzeamento natural com chuva pode comprometer o resultado.
 
-Qualquer dúvida, é só responder essa mensagem!
+Qualquer dúvida, falar direto com o studio (61) 98402-9860
 
 Até amanhã! ✨`,
 
