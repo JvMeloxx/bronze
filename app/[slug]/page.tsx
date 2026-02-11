@@ -67,6 +67,7 @@ export default function AgendarPage() {
     const [servicos, setServicos] = useState<Servico[]>([])
 
     // Form state
+    const [selectedCategory, setSelectedCategory] = useState<"natural" | "artificial" | null>(null)
     const [selectedDate, setSelectedDate] = useState("")
     const [selectedHorario, setSelectedHorario] = useState("")
     const [selectedTipo, setSelectedTipo] = useState("")
@@ -80,6 +81,18 @@ export default function AgendarPage() {
     // Disponibilidade por horário: { "09:00": 2, "10:00": 0, ... }
     const [bookingsPerSlot, setBookingsPerSlot] = useState<Record<string, number>>({})
     const [loadingAvailability, setLoadingAvailability] = useState(false)
+
+    // ... (useEffect loadAll remains same) ...
+    // NOTE: Re-inserting the useEffect hooks here is redundant if I can just target the state block
+    // But replace_file_content replaces a contiguous block. I need to be careful not to delete useEffects if I don't include them.
+    // The previous block ended at line 83.
+    // I will target lines 70-83 to add user state.
+    // Then I will target getHorariosDisponiveis separately.
+
+    // Let's split this into two replacements if possible, or one big one if they are close.
+    // They are separated by ~120 lines (useEffect blocks).
+    // I'll do state first.
+
 
     // Carregar dados: Studio primeiro, depois Clima
     useEffect(() => {
@@ -201,13 +214,6 @@ export default function AgendarPage() {
     // Calcular horários disponíveis com base no dia da semana
     const getHorariosDisponiveis = () => {
         if (!studio?.horarios_funcionamento) return []
-
-        // Se for array simples (legado), retorna ele mesmo
-        if (Array.isArray(studio.horarios_funcionamento)) {
-            return studio.horarios_funcionamento
-        }
-
-        // Se não tiver data selecionada, retorna vazio ou todos (opcional)
         if (!selectedDate) return []
 
         // Descobrir dia da semana: 0=Domingo, 1=Segunda...
@@ -216,6 +222,27 @@ export default function AgendarPage() {
 
         const mapDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"]
         const key = mapDays[dayOfWeek]
+
+        // 1. Verificar se o serviço selecionado tem horário específico
+        if (selectedTipo) {
+            const servico = servicos.find(s => s.id === selectedTipo)
+            if (servico?.horarios && servico.horarios[key]) {
+                const horariosServico = servico.horarios[key]
+                if (Array.isArray(horariosServico) && horariosServico.length > 0) {
+                    return horariosServico.sort()
+                }
+                // Se array vazio, serviço não atende nesse dia. Retorna vazio.
+                if (Array.isArray(horariosServico) && horariosServico.length === 0) {
+                    return []
+                }
+            }
+        }
+
+        // 2. Fallback: Horário geral do estúdio
+        // Se for array simples (legado), retorna ele mesmo
+        if (Array.isArray(studio.horarios_funcionamento)) {
+            return studio.horarios_funcionamento
+        }
 
         return studio.horarios_funcionamento[key] || []
     }
@@ -427,7 +454,7 @@ export default function AgendarPage() {
                 {/* Progress Steps */}
                 <div className="flex items-center justify-center mb-8">
                     <div className="flex items-center gap-2">
-                        {[1, 2, 3].map((s) => (
+                        {[1, 2, 3, 4].map((s) => (
                             <div key={s} className="flex items-center">
                                 <div
                                     className={`h-10 w-10 rounded-full flex items-center justify-center font-bold transition-all ${step >= s
@@ -437,9 +464,9 @@ export default function AgendarPage() {
                                 >
                                     {step > s ? "✓" : s}
                                 </div>
-                                {s < 3 && (
+                                {s < 4 && (
                                     <div
-                                        className={`w-12 h-1 mx-1 ${step > s ? "bg-amber-500" : "bg-gray-200 dark:bg-zinc-700"
+                                        className={`w-8 sm:w-12 h-1 mx-1 ${step > s ? "bg-amber-500" : "bg-gray-200 dark:bg-zinc-700"
                                             }`}
                                     />
                                 )}
@@ -452,17 +479,23 @@ export default function AgendarPage() {
                 <div className="text-center mb-8">
                     {step === 1 && (
                         <>
-                            <h1 className="text-3xl font-bold mb-2">Escolha a Data ☀️</h1>
-                            <p className="text-muted-foreground">Veja a previsão do tempo e escolha o melhor dia</p>
+                            <h1 className="text-3xl font-bold mb-2">Qual seu objetivo? 🎯</h1>
+                            <p className="text-muted-foreground">Escolha o tipo de bronzeamento ideal para você</p>
                         </>
                     )}
                     {step === 2 && (
+                        <>
+                            <h1 className="text-3xl font-bold mb-2">Escolha a Data 📅</h1>
+                            <p className="text-muted-foreground">Veja a previsão e disponibilidade</p>
+                        </>
+                    )}
+                    {step === 3 && (
                         <>
                             <h1 className="text-3xl font-bold mb-2">Escolha o Horário 🕐</h1>
                             <p className="text-muted-foreground">Selecione o serviço e horário desejado</p>
                         </>
                     )}
-                    {step === 3 && (
+                    {step === 4 && (
                         <>
                             <h1 className="text-3xl font-bold mb-2">Seus Dados 📝</h1>
                             <p className="text-muted-foreground">Preencha suas informações para confirmar</p>
@@ -493,8 +526,51 @@ export default function AgendarPage() {
 
                 {!loadingData && studio && (
                     <>
-                        {/* Step 1: Select Date */}
+                        {/* Step 1: Select Category */}
                         {step === 1 && (
+                            <div className="grid md:grid-cols-2 gap-6 animate-in fade-in duration-300 max-w-2xl mx-auto">
+                                <button
+                                    onClick={() => {
+                                        setSelectedCategory("natural")
+                                        setStep(2)
+                                    }}
+                                    className="group relative overflow-hidden rounded-2xl border-2 border-amber-100 dark:border-amber-900 bg-white dark:bg-zinc-900 hover:border-amber-500 dark:hover:border-amber-500 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 p-8 text-center"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="relative z-10">
+                                        <div className="h-24 w-24 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                                            <span className="text-6xl">☀️</span>
+                                        </div>
+                                        <h3 className="text-2xl font-bold mb-2 text-foreground">Bronze Natural</h3>
+                                        <p className="text-muted-foreground">
+                                            Realizado com exposição solar, proporcionando um bronzeado dourado e natural.
+                                        </p>
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        setSelectedCategory("artificial")
+                                        setStep(2)
+                                    }}
+                                    className="group relative overflow-hidden rounded-2xl border-2 border-amber-100 dark:border-amber-900 bg-white dark:bg-zinc-900 hover:border-violet-500 dark:hover:border-violet-500 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 p-8 text-center"
+                                >
+                                    <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    <div className="relative z-10">
+                                        <div className="h-24 w-24 rounded-full bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+                                            <span className="text-6xl">💡</span>
+                                        </div>
+                                        <h3 className="text-2xl font-bold mb-2 text-foreground">Bronze na Cabine</h3>
+                                        <p className="text-muted-foreground">
+                                            Bronzeamento artificial em máquina, ideal para dias nublados ou para quem busca praticidade.
+                                        </p>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Step 2: Select Date */}
+                        {step === 2 && (
                             <div className="space-y-4 animate-in fade-in duration-300">
                                 {loadingWeather ? (
                                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
@@ -676,11 +752,14 @@ export default function AgendarPage() {
                                     </Card>
                                 )}
 
-                                <div className="flex justify-end">
+                                <div className="flex justify-between">
+                                    <Button variant="outline" onClick={() => setStep(1)}>
+                                        ← Voltar
+                                    </Button>
                                     <Button
                                         size="lg"
                                         disabled={!selectedDate}
-                                        onClick={() => setStep(2)}
+                                        onClick={() => setStep(3)}
                                         className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
                                     >
                                         Continuar →
@@ -689,8 +768,8 @@ export default function AgendarPage() {
                             </div>
                         )}
 
-                        {/* Step 2: Select Service & Time */}
-                        {step === 2 && (
+                        {/* Step 3: Select Service & Time */}
+                        {step === 3 && (
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 {/* Selected Date Summary */}
                                 <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
@@ -708,32 +787,34 @@ export default function AgendarPage() {
                                 {/* Services */}
                                 <div>
                                     <Label className="text-lg mb-3 block">Tipo de Serviço</Label>
-                                    {servicos.length > 0 ? (
+                                    {servicos.filter(s => s.categoria === selectedCategory).length > 0 ? (
                                         <div className="grid gap-3">
-                                            {servicos.map((servico) => (
-                                                <button
-                                                    key={servico.id}
-                                                    onClick={() => setSelectedTipo(servico.id)}
-                                                    className={`p-4 rounded-xl text-left transition-all ${selectedTipo === servico.id
-                                                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
-                                                        : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
-                                                        }`}
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div>
-                                                            <p className="font-medium text-lg">{servico.nome}</p>
-                                                            <p className={`text-sm ${selectedTipo === servico.id ? "text-white/80" : "text-muted-foreground"}`}>
-                                                                ⏱️ {servico.duracao} min
-                                                            </p>
+                                            {servicos
+                                                .filter(s => s.categoria === selectedCategory)
+                                                .map((servico) => (
+                                                    <button
+                                                        key={servico.id}
+                                                        onClick={() => setSelectedTipo(servico.id)}
+                                                        className={`p-4 rounded-xl text-left transition-all ${selectedTipo === servico.id
+                                                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
+                                                            : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div>
+                                                                <p className="font-medium text-lg">{servico.nome}</p>
+                                                                <p className={`text-sm ${selectedTipo === servico.id ? "text-white/80" : "text-muted-foreground"}`}>
+                                                                    ⏱️ {servico.duracao} min
+                                                                </p>
+                                                            </div>
+                                                            <p className="text-xl font-bold">R$ {servico.preco.toFixed(2).replace('.', ',')}</p>
                                                         </div>
-                                                        <p className="text-xl font-bold">R$ {servico.preco.toFixed(2).replace('.', ',')}</p>
-                                                    </div>
-                                                </button>
-                                            ))}
+                                                    </button>
+                                                ))}
                                         </div>
                                     ) : (
                                         <div className="p-4 bg-yellow-50 text-yellow-800 rounded-lg text-center">
-                                            Nenhum serviço disponível no momento.
+                                            Nenhum serviço disponível nesta categoria.
                                         </div>
                                     )}
                                 </div>
@@ -749,46 +830,52 @@ export default function AgendarPage() {
                                         </div>
                                     ) : (
                                         <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                                            {horarios.map((h) => {
-                                                const full = isSlotFull(h)
-                                                const vagas = getVagasRestantes(h)
-                                                return (
-                                                    <button
-                                                        key={h}
-                                                        onClick={() => !full && setSelectedHorario(h)}
-                                                        disabled={full}
-                                                        className={`py-3 px-4 rounded-lg font-mono font-medium transition-all relative ${full
-                                                            ? "bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 opacity-50 cursor-not-allowed line-through"
-                                                            : selectedHorario === h
-                                                                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
-                                                                : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
-                                                            }`}
-                                                    >
-                                                        {h}
-                                                        {full && (
-                                                            <span className="block text-[10px] text-red-500 font-sans font-normal no-underline" style={{ textDecoration: 'none' }}>Lotado</span>
-                                                        )}
-                                                        {!full && vagas !== null && capacidadeServico > 1 && (
-                                                            <span className={`block text-[10px] font-sans font-normal ${selectedHorario === h ? 'text-white/80' : 'text-green-600 dark:text-green-400'
-                                                                }`}>
-                                                                {vagas} vaga{vagas !== 1 ? 's' : ''}
-                                                            </span>
-                                                        )}
-                                                    </button>
-                                                )
-                                            })}
+                                            {horarios.length > 0 ? (
+                                                horarios.map((h) => {
+                                                    const full = isSlotFull(h)
+                                                    const vagas = getVagasRestantes(h)
+                                                    return (
+                                                        <button
+                                                            key={h}
+                                                            onClick={() => !full && setSelectedHorario(h)}
+                                                            disabled={full}
+                                                            className={`py-3 px-4 rounded-lg font-mono font-medium transition-all relative ${full
+                                                                ? "bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 opacity-50 cursor-not-allowed line-through"
+                                                                : selectedHorario === h
+                                                                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
+                                                                    : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
+                                                                }`}
+                                                        >
+                                                            {h}
+                                                            {full && (
+                                                                <span className="block text-[10px] text-red-500 font-sans font-normal no-underline" style={{ textDecoration: 'none' }}>Lotado</span>
+                                                            )}
+                                                            {!full && vagas !== null && capacidadeServico > 1 && (
+                                                                <span className={`block text-[10px] font-sans font-normal ${selectedHorario === h ? 'text-white/80' : 'text-green-600 dark:text-green-400'
+                                                                    }`}>
+                                                                    {vagas} vaga{vagas !== 1 ? 's' : ''}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    )
+                                                })
+                                            ) : (
+                                                <p className="text-muted-foreground col-span-full">
+                                                    Nenhum horário disponível para esta data{selectedTipo ? " e serviço" : ""}.
+                                                </p>
+                                            )}
                                         </div>
                                     )}
                                 </div>
 
                                 <div className="flex justify-between">
-                                    <Button variant="outline" onClick={() => setStep(1)}>
+                                    <Button variant="outline" onClick={() => setStep(2)}>
                                         ← Voltar
                                     </Button>
                                     <Button
                                         size="lg"
                                         disabled={!selectedTipo || !selectedHorario}
-                                        onClick={() => setStep(3)}
+                                        onClick={() => setStep(4)}
                                         className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
                                     >
                                         Continuar →
@@ -797,8 +884,8 @@ export default function AgendarPage() {
                             </div>
                         )}
 
-                        {/* Step 3: Personal Info */}
-                        {step === 3 && (
+                        {/* Step 4: Personal Info */}
+                        {step === 4 && (
                             <div className="space-y-6 animate-in fade-in duration-300">
                                 {/* Summary */}
                                 <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/20">
@@ -868,7 +955,7 @@ export default function AgendarPage() {
                                 </div>
 
                                 <div className="flex justify-between">
-                                    <Button variant="outline" onClick={() => setStep(2)}>
+                                    <Button variant="outline" onClick={() => setStep(3)}>
                                         ← Voltar
                                     </Button>
                                     <Button

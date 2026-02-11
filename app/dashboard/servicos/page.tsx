@@ -195,7 +195,7 @@ export default function ServicosPage() {
                                     <Label htmlFor="categoria">Categoria</Label>
                                     <Select
                                         value={formData.categoria}
-                                        onValueChange={(val: "natural" | "artificial") => setFormData({ ...formData, categoria: val })}
+                                        onValueChange={(val) => setFormData({ ...formData, categoria: val as "natural" | "artificial" })}
                                     >
                                         <SelectTrigger>
                                             <SelectValue placeholder="Selecione" />
