@@ -239,6 +239,9 @@ Dicas para sua sessão:
 • Evite usar cremes ou óleos antes da sessão
 • Chegue 10 minutos antes
 
+👇 *IMPORTANTE:*
+Para garantir que você receba nossos lembretes e localização, por favor *responda essa mensagem* com um "OK" ou um emoji! 🌸
+
 Até lá! ✨`,
 
     /**
