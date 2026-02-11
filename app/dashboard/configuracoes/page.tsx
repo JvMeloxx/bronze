@@ -648,52 +648,7 @@ export default function ConfiguracoesPage() {
                 </CardContent>
             </Card >
 
-            {/* Preview de Mensagens */}
-            < Card className="border-amber-200 dark:border-amber-800" >
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <span className="text-2xl">💬</span>
-                        Preview das Mensagens
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    {/* Mensagem para Dona */}
-                    <div>
-                        <p className="font-medium mb-2">📩 Quando cliente agenda (para você):</p>
-                        <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/30 text-sm font-mono whitespace-pre-wrap">
-                            {`🔔 *NOVO AGENDAMENTO!*
 
-👤 *Cliente:* Maria Silva
-📱 *Telefone:* (11) 99999-9999
-📅 *Data:* 05/02/2026
-⏰ *Horário:* 14:00
-💆 *Serviço:* Bronzeamento Natural
-
-Acesse o dashboard para mais detalhes.`}
-                        </div>
-                    </div>
-
-                    {/* Lembrete para Cliente */}
-                    <div>
-                        <p className="font-medium mb-2">⏰ Lembrete 1 dia antes (para cliente):</p>
-                        <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/30 text-sm font-mono whitespace-pre-wrap">
-                            {`☀️ *Olá Maria!*
-
-Sua sessão de bronzeamento é *AMANHÃ* às *14:00*!
-
-📋 *CUIDADOS PRÉ-BRONZEAMENTO:*
-• Faça esfoliação leve na véspera
-• Hidrate bem a pele
-• Evite cremes/óleos no dia
-• Depilação: faça 24h antes
-
-⚠️ *ATENÇÃO:* Caso o clima esteja *CHUVOSO*, entre em contato imediatamente para reagendar!
-
-Até amanhã! ✨`}
-                        </div>
-                    </div>
-                </CardContent>
-            </Card >
         </div >
     )
 }
