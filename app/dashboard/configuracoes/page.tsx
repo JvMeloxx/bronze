@@ -591,12 +591,9 @@ export default function ConfiguracoesPage() {
                             placeholder={
                                 formData.pix_key_type === "telefone" ? "(61) 99999-9999" :
                                     formData.pix_key_type === "cpf" ? "000.000.000-00" :
-                                        formData.pix_key_type === "email" ? "email@exemplo.com" :
-                                            formData.pix_key_type === "telefone" ? "(61) 99999-9999" :
-                                                formData.pix_key_type === "cpf" ? "000.000.000-00" :
-                                                    formData.pix_key_type === "cnpj" ? "00.000.000/0000-00" :
-                                                        formData.pix_key_type === "email" ? "email@exemplo.com" :
-                                                            "sua-chave-aleatoria"
+                                        formData.pix_key_type === "cnpj" ? "00.000.000/0000-00" :
+                                            formData.pix_key_type === "email" ? "email@exemplo.com" :
+                                                "sua-chave-aleatoria"
                             }
                             className="border-green-200 dark:border-green-800"
                             disabled={!formData.pix_enabled}
