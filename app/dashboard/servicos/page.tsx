@@ -52,7 +52,8 @@ export default function ServicosPage() {
         capacidade: 1,
         categoria: "natural" as "natural" | "artificial",
         use_custom_schedule: false,
-        horarios: {} as Record<string, string[]>
+        horarios: {} as Record<string, string[]>,
+        precos_por_dia: {} as Record<string, number>
     })
 
     const resetForm = () => {
@@ -64,7 +65,8 @@ export default function ServicosPage() {
             capacidade: 1,
             categoria: "natural",
             use_custom_schedule: false,
-            horarios: {}
+            horarios: {},
+            precos_por_dia: {}
         })
         setEditingServico(null)
     }
@@ -80,7 +82,8 @@ export default function ServicosPage() {
                 capacidade: servico.capacidade ?? 1,
                 categoria: servico.categoria || "natural",
                 use_custom_schedule: !!servico.horarios,
-                horarios: servico.horarios || {}
+                horarios: servico.horarios || {},
+                precos_por_dia: servico.precos_por_dia || {}
             })
         } else {
             resetForm()
@@ -107,7 +110,8 @@ export default function ServicosPage() {
             duracao: duracaoMinutos,
             capacidade: formData.capacidade,
             categoria: formData.categoria,
-            horarios: formData.use_custom_schedule ? formData.horarios : null
+            horarios: formData.use_custom_schedule ? formData.horarios : null,
+            precos_por_dia: Object.keys(formData.precos_por_dia).length > 0 ? formData.precos_por_dia : null
         }
 
         if (editingServico) {
@@ -229,9 +233,9 @@ export default function ServicosPage() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="preco">Preço (R$) *</Label>
+                                    <Label htmlFor="preco">Preço Base (R$) *</Label>
                                     <Input
                                         id="preco"
                                         type="number"
@@ -241,7 +245,40 @@ export default function ServicosPage() {
                                         onChange={(e) => setFormData({ ...formData, preco: parseFloat(e.target.value) || 0 })}
                                         className="border-amber-200 dark:border-amber-800"
                                     />
+                                    <p className="text-xs text-muted-foreground">Preço padrão para dias sem configuração específica.</p>
                                 </div>
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                                <Label>Preços por Dia da Semana (Opcional)</Label>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                                    {["segunda", "terca", "quarta", "quinta", "sexta", "sabado", "domingo"].map((day) => (
+                                        <div key={day} className="space-y-1">
+                                            <Label className="text-xs capitalize">{day}</Label>
+                                            <Input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="Padrão"
+                                                value={formData.precos_por_dia?.[day] || ""}
+                                                onChange={(e) => {
+                                                    const val = e.target.value ? parseFloat(e.target.value) : undefined
+                                                    const newPrecos = { ...formData.precos_por_dia }
+                                                    if (val !== undefined) {
+                                                        newPrecos[day] = val
+                                                    } else {
+                                                        delete newPrecos[day]
+                                                    }
+                                                    setFormData({ ...formData, precos_por_dia: newPrecos })
+                                                }}
+                                                className="h-8 text-sm"
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 pt-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="duracao">Duração</Label>
                                     <Input

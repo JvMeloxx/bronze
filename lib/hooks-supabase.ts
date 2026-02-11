@@ -29,6 +29,7 @@ export interface Servico {
     created_at: string
     categoria: "natural" | "artificial"
     horarios: Record<string, string[]> | null
+    precos_por_dia: Record<string, number> | null
 }
 
 export interface Agendamento {

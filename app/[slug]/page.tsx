@@ -407,7 +407,18 @@ export default function AgendarPage() {
             }
 
             // 4. Redirecionar Sucesso com Params PIX
-            const precoServico = servicoSelecionado?.preco || 0
+            const precoServico = (() => {
+                let preco = servicoSelecionado?.preco || 0
+                if (servicoSelecionado?.precos_por_dia && selectedDate) {
+                    const date = new Date(selectedDate + "T00:00:00")
+                    const mapDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"]
+                    const key = mapDays[date.getDay()]
+                    if (servicoSelecionado.precos_por_dia[key]) {
+                        preco = servicoSelecionado.precos_por_dia[key]
+                    }
+                }
+                return preco
+            })()
 
             let successUrl = `/${slug}/sucesso?data=${selectedDate}&horario=${selectedHorario}&nome=${encodeURIComponent(formData.nome)}&servico=${encodeURIComponent(servicoNome)}&preco=${precoServico}`
 
@@ -791,26 +802,47 @@ export default function AgendarPage() {
                                         <div className="grid gap-3">
                                             {servicos
                                                 .filter(s => s.categoria === selectedCategory)
-                                                .map((servico) => (
-                                                    <button
-                                                        key={servico.id}
-                                                        onClick={() => setSelectedTipo(servico.id)}
-                                                        className={`p-4 rounded-xl text-left transition-all ${selectedTipo === servico.id
-                                                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
-                                                            : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
-                                                            }`}
-                                                    >
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
-                                                                <p className="font-medium text-lg">{servico.nome}</p>
-                                                                <p className={`text-sm ${selectedTipo === servico.id ? "text-white/80" : "text-muted-foreground"}`}>
-                                                                    ⏱️ {servico.duracao} min
-                                                                </p>
+                                                .map((servico) => {
+                                                    // Calcular preço baseado no dia
+                                                    let precoDisplay = servico.preco
+                                                    if (selectedDate && servico.precos_por_dia) {
+                                                        const date = new Date(selectedDate + "T00:00:00")
+                                                        const dayOfWeek = date.getDay()
+                                                        const mapDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"]
+                                                        const key = mapDays[dayOfWeek]
+                                                        if (servico.precos_por_dia[key]) {
+                                                            precoDisplay = servico.precos_por_dia[key]
+                                                        }
+                                                    }
+
+                                                    return (
+                                                        <button
+                                                            key={servico.id}
+                                                            onClick={() => setSelectedTipo(servico.id)}
+                                                            className={`p-4 rounded-xl text-left transition-all ${selectedTipo === servico.id
+                                                                ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
+                                                                : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
+                                                                }`}
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <div>
+                                                                    <p className="font-medium text-lg">{servico.nome}</p>
+                                                                    <p className={`text-sm ${selectedTipo === servico.id ? "text-white/80" : "text-muted-foreground"}`}>
+                                                                        ⏱️ {servico.duracao} min
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <p className="text-xl font-bold">R$ {precoDisplay.toFixed(2).replace('.', ',')}</p>
+                                                                    {precoDisplay !== servico.preco && (
+                                                                        <p className={`text-xs ${selectedTipo === servico.id ? "text-white/80" : "text-amber-600"}`}>
+                                                                            Preço especial de {formatDate(selectedDate).split(",")[0]}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                            <p className="text-xl font-bold">R$ {servico.preco.toFixed(2).replace('.', ',')}</p>
-                                                        </div>
-                                                    </button>
-                                                ))}
+                                                        </button>
+                                                    )
+                                                })}
                                         </div>
                                     ) : (
                                         <div className="p-4 bg-yellow-50 text-yellow-800 rounded-lg text-center">
@@ -899,8 +931,24 @@ export default function AgendarPage() {
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-2xl font-bold font-mono text-amber-600">{selectedHorario}</p>
-                                                <p className="text-sm font-medium">R$ {(servicos.find(s => s.id === selectedTipo)?.preco || 0).toFixed(2).replace('.', ',')}</p>
+                                                {(() => {
+                                                    const s = servicos.find(s => s.id === selectedTipo)
+                                                    let preco = s?.preco || 0
+                                                    if (s?.precos_por_dia && selectedDate) {
+                                                        const date = new Date(selectedDate + "T00:00:00")
+                                                        const mapDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"]
+                                                        const key = mapDays[date.getDay()]
+                                                        if (s.precos_por_dia[key]) {
+                                                            preco = s.precos_por_dia[key]
+                                                        }
+                                                    }
+                                                    return (
+                                                        <>
+                                                            <p className="text-2xl font-bold font-mono text-amber-600">{selectedHorario}</p>
+                                                            <p className="text-sm font-medium">R$ {preco.toFixed(2).replace('.', ',')}</p>
+                                                        </>
+                                                    )
+                                                })()}
                                             </div>
                                         </div>
                                     </CardContent>
