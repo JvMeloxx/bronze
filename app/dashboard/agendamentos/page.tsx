@@ -286,8 +286,9 @@ export default function AgendamentosPage() {
     }
 
     // Horários disponíveis (9h às 20h, intervalos de 30min)
-    const horarios = Array.from({ length: 23 }, (_, i) => {
-        const hour = Math.floor(i / 2) + 9
+    // Horários disponíveis (6h às 21h, intervalos de 30min)
+    const horarios = Array.from({ length: 31 }, (_, i) => {
+        const hour = Math.floor(i / 2) + 6
         const min = (i % 2) * 30
         return `${hour.toString().padStart(2, "0")}:${min.toString().padStart(2, "0")}`
     })
@@ -356,7 +357,7 @@ export default function AgendamentosPage() {
                             + Novo Agendamento
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>
                                 {editingAgendamento ? "Editar Agendamento" : "Novo Agendamento"}
@@ -370,7 +371,9 @@ export default function AgendamentosPage() {
                                 <Label>Cliente *</Label>
                                 <Select value={formData.cliente_id} onValueChange={(v) => setFormData({ ...formData, cliente_id: v })}>
                                     <SelectTrigger className="border-amber-200 dark:border-amber-800">
-                                        <SelectValue placeholder="Selecione o cliente" />
+                                        <SelectValue placeholder="Selecione o cliente">
+                                            {clientes.find(c => c.id === formData.cliente_id)?.nome}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {clientes.map(c => (
@@ -420,7 +423,12 @@ export default function AgendamentosPage() {
                                     })
                                 }}>
                                     <SelectTrigger className="border-amber-200 dark:border-amber-800">
-                                        <SelectValue placeholder="Selecione o serviço" />
+                                        <SelectValue placeholder="Selecione o serviço">
+                                            {(() => {
+                                                const s = servicos.find(s => s.id === formData.servico_id)
+                                                return s ? `${s.nome} (${s.duracao} min)` : null
+                                            })()}
+                                        </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent>
                                         {servicos.filter(s => s.ativo).map(s => (
