@@ -46,6 +46,8 @@ interface StudioPublicConfig {
     // Flag interna para saber se deve enviar msg
     send_to_owner: boolean
     send_to_client: boolean
+    latitude?: number
+    longitude?: number
 }
 
 export default function AgendarPage() {
@@ -79,7 +81,7 @@ export default function AgendarPage() {
     const [bookingsPerSlot, setBookingsPerSlot] = useState<Record<string, number>>({})
     const [loadingAvailability, setLoadingAvailability] = useState(false)
 
-    // Carregar tudo em paralelo: Previsão + Studio + Serviços
+    // Carregar dados: Studio primeiro, depois Clima
     useEffect(() => {
         if (!slug) return
 
@@ -88,30 +90,23 @@ export default function AgendarPage() {
             setLoadingWeather(true)
 
             try {
-                // Disparar weather e studio ao MESMO tempo
-                const [forecastResult, studioResult] = await Promise.all([
-                    getWeatherForecast(),
-                    supabase
-                        .from("studios")
-                        .select("*")
-                        .eq("slug", slug)
-                        .eq("ativo", true)
-                        .single()
-                ])
+                // 1. Buscar Studio
+                const { data: currentStudio, error: studioError } = await supabase
+                    .from("studios")
+                    .select("*")
+                    .eq("slug", slug)
+                    .eq("ativo", true)
+                    .single()
 
-                // Weather
-                setWeather(forecastResult)
-                setLoadingWeather(false)
-
-                // Studio
-                if (studioResult.error || !studioResult.data) {
-                    console.error("Erro ao buscar studio:", studioResult.error)
+                if (studioError || !currentStudio) {
+                    console.error("Erro ao buscar studio:", studioError)
                     setStudio(null)
                     setLoadingData(false)
+                    setLoadingWeather(false)
                     return
                 }
 
-                const currentStudio = studioResult.data
+                // Definir dados do Studio
                 setStudio({
                     id: currentStudio.id,
                     nome_estudio: currentStudio.nome_estudio,
@@ -130,10 +125,23 @@ export default function AgendarPage() {
                     ],
                     location_url: currentStudio.location_url,
                     send_to_owner: true,
-                    send_to_client: true
+                    send_to_client: true,
+                    latitude: currentStudio.latitude,
+                    longitude: currentStudio.longitude
                 })
 
-                // Buscar serviços em paralelo (já temos o studio_id)
+                // 2. Buscar Clima usando a localização do Studio (se houver)
+                // Se não tiver lat/long, usa o padrão da função (SP)
+                const lat = currentStudio.latitude
+                const lng = currentStudio.longitude
+
+                // Dispara busca do clima (sem await para não travar UI se não quiser, mas aqui queremos esperar para mostrar skeleton junto?)
+                // Vamos esperar para garantir consistência
+                const forecastResult = await getWeatherForecast(lat, lng)
+                setWeather(forecastResult)
+                setLoadingWeather(false)
+
+                // 3. Buscar serviços em paralelo com Clima (poderia ser, mas vamos sequencial para simplificar o fluxo de dados do studio)
                 const { data: servicosData, error: servicosError } = await supabase
                     .from("servicos")
                     .select("*")
@@ -147,7 +155,7 @@ export default function AgendarPage() {
                 console.error("Erro geral:", error)
             } finally {
                 setLoadingData(false)
-                setLoadingWeather(false)
+                // setLoadingWeather já foi setado antes
             }
         }
         loadAll()
