@@ -435,7 +435,7 @@ export default function AgendarPage() {
 
         } catch (error) {
             console.error("Erro no processamento:", error)
-            alert("Ocorreu um erro ao realizar o agendamento. Por favor, tente novamente.")
+            alert(`Ocorreu um erro: ${error instanceof Error ? error.message : "Erro desconhecido"}`)
         } finally {
             setSubmitting(false)
         }
