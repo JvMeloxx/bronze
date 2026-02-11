@@ -57,7 +57,8 @@ export default function ConfiguracoesPage() {
         notifications_enabled: true,
         pix_enabled: true,
         pix_key: "",
-        pix_key_type: "telefone" as "telefone" | "cpf" | "email" | "aleatoria",
+        pix_key_type: "telefone" as "telefone" | "cpf" | "cnpj" | "email" | "aleatoria",
+
         establishment_name: "",
         signal_percentage: 50,
         payment_policy: "",
@@ -90,7 +91,7 @@ export default function ConfiguracoesPage() {
                 notifications_enabled: config.notifications_enabled ?? true,
                 pix_enabled: config.pix_enabled ?? true,
                 pix_key: config.pix_key || "",
-                pix_key_type: (config.pix_key_type as string as "telefone" | "cpf" | "email" | "aleatoria") || "telefone",
+                pix_key_type: (config.pix_key_type as string as "telefone" | "cpf" | "cnpj" | "email" | "aleatoria") || "telefone",
                 establishment_name: config.establishment_name || "",
                 signal_percentage: config.signal_percentage || 50,
                 payment_policy: config.payment_policy || "",
@@ -571,6 +572,7 @@ export default function ConfiguracoesPage() {
                             <SelectContent>
                                 <SelectItem value="telefone">📱 Telefone</SelectItem>
                                 <SelectItem value="cpf">🪪 CPF</SelectItem>
+                                <SelectItem value="cnpj">🏢 CNPJ</SelectItem>
                                 <SelectItem value="email">📧 Email</SelectItem>
                                 <SelectItem value="aleatoria">🔑 Chave Aleatória</SelectItem>
                             </SelectContent>
@@ -590,7 +592,11 @@ export default function ConfiguracoesPage() {
                                 formData.pix_key_type === "telefone" ? "(61) 99999-9999" :
                                     formData.pix_key_type === "cpf" ? "000.000.000-00" :
                                         formData.pix_key_type === "email" ? "email@exemplo.com" :
-                                            "sua-chave-aleatoria"
+                                            formData.pix_key_type === "telefone" ? "(61) 99999-9999" :
+                                                formData.pix_key_type === "cpf" ? "000.000.000-00" :
+                                                    formData.pix_key_type === "cnpj" ? "00.000.000/0000-00" :
+                                                        formData.pix_key_type === "email" ? "email@exemplo.com" :
+                                                            "sua-chave-aleatoria"
                             }
                             className="border-green-200 dark:border-green-800"
                             disabled={!formData.pix_enabled}
