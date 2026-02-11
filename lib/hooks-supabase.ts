@@ -51,6 +51,23 @@ export interface Agendamento {
     created_at: string
 }
 
+export interface Studio {
+    id: string
+    nome_estudio: string
+    slug: string
+    owner_phone: string
+    notifications_enabled: boolean
+    pix_enabled: boolean
+    pix_key: string
+    pix_key_type: string
+    establishment_name: string
+    signal_percentage: number
+    payment_policy: string
+    horarios_funcionamento: Record<string, string[]> | string[]
+    location_url?: string
+    card_url?: string
+}
+
 // Hook para gerenciar Clientes
 export function useClientesDB() {
     const [clientes, setClientes] = useState<Cliente[]>([])

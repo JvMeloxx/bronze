@@ -28,6 +28,7 @@ interface StudioPublicConfig {
     notifications_enabled: boolean
     owner_phone: string
     horarios_funcionamento: string[] | Record<string, string[]>
+    card_url?: string
 }
 
 export default function RemarcarPage() {

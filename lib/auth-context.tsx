@@ -23,6 +23,7 @@ interface Studio {
     slug: string
     horarios_funcionamento: Record<string, string[]>
     location_url?: string
+    card_url?: string
     latitude?: number
     longitude?: number
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { createAdminClient } from "@/lib/supabase-admin"
-import { enviarConfirmacaoAgendamento, sendTextMessage } from "@/lib/zapi"
+import { enviarConfirmacaoAgendamento, sendTextMessage, sendImageMessage } from "@/lib/zapi"
 
 // Segredo para validar se necessário (opcional por enquanto)
 // const WEBHOOK_SECRET = process.env.ZAPI_WEBHOOK_SECRET
@@ -65,9 +65,33 @@ export async function POST(request: Request) {
                     return NextResponse.json({ status: "error_db" })
                 }
 
-                // 2. Feedback para Dona
-                // await enviarTextMessage(phone, "✅ Pagamento confirmado e agendamento atualizado!") 
-                // (Opcional, Z-API as vezes já mostra o clique)
+                // 2. Tentar enviar imagem do card se existir
+                try {
+                    // Buscar studio_id do agendamento
+                    const { data: agendamento } = await supabase
+                        .from("agendamentos")
+                        .select("studio_id")
+                        .eq("id", agendamentoId)
+                        .single()
+
+                    if (agendamento) {
+                        const { data: studio } = await supabase
+                            .from("studios")
+                            .select("card_url")
+                            .eq("id", agendamento.studio_id)
+                            .single()
+
+                        if (studio?.card_url) {
+                            await sendImageMessage({
+                                phone,
+                                image: studio.card_url,
+                                caption: "✨ Aqui está seu cartão de confirmação!"
+                            })
+                        }
+                    }
+                } catch (err) {
+                    console.error("Erro ao enviar card:", err)
+                }
 
             } else if (action === "deny") {
                 // Opcional: Cancelar ou apenas marcar como pendente c/ obs?
@@ -86,6 +110,49 @@ export async function POST(request: Request) {
             }
 
             return NextResponse.json({ status: "success", action })
+        }
+
+        // Logica de Resposta de Texto (Cliente confirmando leitura)
+        // Se a mensagem não for de botão e for de texto
+        if (message?.text?.message || message?.messageType === "text") {
+            const phone = message.phone
+            if (!phone) return NextResponse.json({ status: "ignored_no_phone" })
+
+            // Verificar se cliente tem agendamento recente CONFIRMADO (últimas 24h)
+            // e se ainda não recebeu o card (opcional, pode ser complexo controlar o estado "card_entregue")
+            // Simplificação: Se tiver agendamento futuro confirmado, manda o card.
+
+            // Buscar agendamento futuro confirmado deste telefone
+            const { data: agendamentos } = await supabase
+                .from("agendamentos")
+                .select("id, studio_id, data")
+                .eq("telefone", phone) // Telefone do cliente
+                .eq("status", "confirmado")
+                .gte("data", new Date().toISOString().split('T')[0]) // Agendamentos hoje ou futuro
+                .order("created_at", { ascending: false })
+                .limit(1)
+
+            if (agendamentos && agendamentos.length > 0) {
+                const agendamento = agendamentos[0]
+
+                // Buscar card do estúdio
+                const { data: studio } = await supabase
+                    .from("studios")
+                    .select("card_url")
+                    .eq("id", agendamento.studio_id)
+                    .single()
+
+                if (studio?.card_url) {
+                    // Enviar Card
+                    console.log(`Enviando card para ${phone} referente ao agendamento ${agendamento.id}`)
+                    await sendImageMessage({
+                        phone,
+                        image: studio.card_url,
+                        caption: "✨ Obrigado por confirmar! Aqui está seu cartão de acesso com todas as informações."
+                    })
+                    return NextResponse.json({ status: "card_sent" })
+                }
+            }
         }
 
         return NextResponse.json({ status: "ignored" })

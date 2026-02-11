@@ -24,6 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useStudioConfig } from "@/lib/hooks-supabase"
 import { useToast } from "@/components/ui/toast"
+import { createClient } from "@/lib/supabase"
 
 export default function ConfiguracoesPage() {
     const { config, updateConfig, refreshConfig } = useStudioConfig()
@@ -64,7 +65,9 @@ export default function ConfiguracoesPage() {
         payment_policy: "",
         slug: "",
         horarios_funcionamento: {} as Record<string, string[]>, // Agora é um objeto
+        horarios_funcionamento: {} as Record<string, string[]>,
         location_url: "",
+        card_url: "",
     })
 
     // Populate form data when config is loaded
@@ -98,6 +101,7 @@ export default function ConfiguracoesPage() {
                 slug: config.slug || "",
                 horarios_funcionamento: horarios,
                 location_url: config.location_url || "",
+                card_url: config.card_url || "",
             })
         }
     }, [config])
@@ -117,7 +121,8 @@ export default function ConfiguracoesPage() {
             payment_policy: formData.payment_policy,
             slug: formData.slug,
             horarios_funcionamento: formData.horarios_funcionamento,
-            location_url: formData.location_url
+            location_url: formData.location_url,
+            card_url: formData.card_url
         })
 
         if (success) {
@@ -331,6 +336,95 @@ export default function ConfiguracoesPage() {
                     </Button>
                 </CardContent>
             </Card>
+
+            {/* Card Upload Imagem de Confirmação */}
+            <Card className="border-pink-200 dark:border-pink-800 bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <span className="text-2xl">📸</span>
+                        Card de Confirmação
+                    </CardTitle>
+                    <CardDescription>
+                        Envie a imagem que será mandada para a cliente após ela confirmar o agendamento.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-pink-300 dark:border-pink-700 rounded-lg bg-white/50 dark:bg-zinc-900/50 hover:bg-white/80 transition-all">
+                        {formData.card_url ? (
+                            <div className="relative text-center">
+                                <img
+                                    src={formData.card_url}
+                                    alt="Card de Confirmação"
+                                    className="max-h-64 rounded-lg shadow-md mb-4 object-contain"
+                                />
+                                <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={async () => {
+                                        setFormData({ ...formData, card_url: "" })
+                                        await handleSave() // Salva para remover do banco
+                                    }}
+                                >
+                                    🗑️ Remover Imagem
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="text-center">
+                                <div className="text-4xl mb-2">📥</div>
+                                <p className="text-sm font-medium mb-1">Clique para enviar uma imagem</p>
+                                <p className="text-xs text-muted-foreground mb-4">JPG ou PNG (Max 2MB)</p>
+                                <Input
+                                    type="file"
+                                    accept="image/*"
+                                    className="max-w-xs mx-auto"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0]
+                                        if (!file) return
+
+                                        if (file.size > 2 * 1024 * 1024) {
+                                            alert("A imagem deve ter no máximo 2MB.")
+                                            return
+                                        }
+
+                                        // Upload logic here directly or separate function
+                                        const supabase = createClient()
+                                        const fileExt = file.name.split('.').pop()
+                                        const fileName = `card_${config?.id}_${Date.now()}.${fileExt}`
+                                        const filePath = `${fileName}`
+
+                                        const { error: uploadError } = await supabase.storage
+                                            .from('studio-assets')
+                                            .upload(filePath, file)
+
+                                        if (uploadError) {
+                                            alert("Erro ao enviar imagem.")
+                                            console.error(uploadError)
+                                            return
+                                        }
+
+                                        const { data: { publicUrl } } = supabase.storage
+                                            .from('studio-assets')
+                                            .getPublicUrl(filePath)
+
+                                        setFormData(prev => ({ ...prev, card_url: publicUrl }))
+                                        // Auto-save after upload
+                                        // Wait a bit to ensure changes are picked up? actually calling handleSave outside relies on state, verify state update
+                                        // Better to just update state and let user click save, or save explicitly passing new data
+
+                                        // For better UX, let's auto save
+                                        if (updateConfig) {
+                                            await updateConfig({ ...formData, card_url: publicUrl })
+                                            addToast({ title: "Imagem enviada e salva!" })
+                                            refreshConfig()
+                                        }
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </div>
+                </CardContent>
+            </Card>
+
             {/* Card Horários de Funcionamento */}
             <Card className="border-blue-200 dark:border-blue-800 bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20">
                 <CardHeader>

@@ -151,6 +151,52 @@ export async function sendButtonMessage(
     }
 }
 
+interface SendImageOptions {
+    phone: string
+    image: string // URL da imagem ou Base64
+    caption?: string
+}
+
+/**
+ * Envia imagem
+ */
+export async function sendImageMessage(
+    options: SendImageOptions,
+    config: ZAPIConfig = defaultConfig
+): Promise<ZAPIResponse> {
+    if (!config.instanceId || !config.token) {
+        return { success: false, error: "Z-API não configurado" }
+    }
+
+    const url = `${ZAPI_BASE_URL}/${config.instanceId}/token/${config.token}/send-image`
+
+    try {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(config.clientToken && { "Client-Token": config.clientToken })
+            },
+            body: JSON.stringify({
+                phone: formatPhoneNumber(options.phone),
+                image: options.image,
+                caption: options.caption
+            })
+        })
+
+        const data = await response.json()
+
+        if (response.ok) {
+            return { success: true, messageId: data.messageId }
+        } else {
+            return { success: false, error: data.message || "Erro ao enviar imagem" }
+        }
+    } catch (error) {
+        console.error("Erro Z-API:", error)
+        return { success: false, error: "Erro de conexão com Z-API" }
+    }
+}
+
 // ===== Templates de Mensagens para SunSync =====
 
 export const MessageTemplates = {
