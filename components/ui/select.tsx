@@ -69,11 +69,11 @@ function SelectTrigger({ children, className, ...props }: React.ButtonHTMLAttrib
     )
 }
 
-function SelectValue({ placeholder }: { placeholder?: string }) {
+function SelectValue({ placeholder, children }: { placeholder?: string; children?: React.ReactNode }) {
     const context = React.useContext(SelectContext)
     if (!context) return null
 
-    return <span>{context.value || placeholder}</span>
+    return <span>{children || context.value || placeholder}</span>
 }
 
 function SelectContent({ children, className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
