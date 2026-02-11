@@ -21,7 +21,7 @@ interface Studio {
     notifications_enabled: boolean
     owner_phone: string
     slug: string
-    horarios_funcionamento: string[]
+    horarios_funcionamento: Record<string, string[]>
     location_url?: string
     latitude?: number
     longitude?: number

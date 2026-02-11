@@ -21,6 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useStudioConfig } from "@/lib/hooks-supabase"
 import { useToast } from "@/components/ui/toast"
 
@@ -36,9 +37,19 @@ export default function ConfiguracoesPage() {
     // Initialized with empty/default, will populate via useEffect when config loads
     // Lista de todos os horários possíveis
     const ALL_HOURS = [
-        '08:00', '09:00', '10:00', '11:00', '12:00',
+        '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
         '13:00', '14:00', '15:00', '16:00', '17:00',
-        '18:00', '19:00', '20:00'
+        '18:00', '19:00', '20:00', '21:00'
+    ]
+
+    const DAYS_OF_WEEK = [
+        { key: 'segunda', label: 'Segunda' },
+        { key: 'terca', label: 'Terça' },
+        { key: 'quarta', label: 'Quarta' },
+        { key: 'quinta', label: 'Quinta' },
+        { key: 'sexta', label: 'Sexta' },
+        { key: 'sabado', label: 'Sábado' },
+        { key: 'domingo', label: 'Domingo' },
     ]
 
     const [formData, setFormData] = useState({
@@ -51,13 +62,29 @@ export default function ConfiguracoesPage() {
         signal_percentage: 50,
         payment_policy: "",
         slug: "",
-        horarios_funcionamento: ALL_HOURS, // Horários de funcionamento
+        horarios_funcionamento: {} as Record<string, string[]>, // Agora é um objeto
         location_url: "",
     })
 
     // Populate form data when config is loaded
     useEffect(() => {
         if (config) {
+            let horarios = {} as Record<string, string[]>
+
+            // Migração: Se vier array (formato antigo), converte para objeto (todos os dias iguais)
+            if (Array.isArray(config.horarios_funcionamento)) {
+                DAYS_OF_WEEK.forEach(day => {
+                    horarios[day.key] = config.horarios_funcionamento as unknown as string[] || []
+                })
+            } else {
+                horarios = config.horarios_funcionamento || {}
+            }
+
+            // Garantir que todas as chaves existam
+            DAYS_OF_WEEK.forEach(day => {
+                if (!horarios[day.key]) horarios[day.key] = []
+            })
+
             setFormData({
                 owner_phone: config.owner_phone || "",
                 notifications_enabled: config.notifications_enabled ?? true,
@@ -68,7 +95,7 @@ export default function ConfiguracoesPage() {
                 signal_percentage: config.signal_percentage || 50,
                 payment_policy: config.payment_policy || "",
                 slug: config.slug || "",
-                horarios_funcionamento: (config.horarios_funcionamento as string[]) || ALL_HOURS,
+                horarios_funcionamento: horarios,
                 location_url: config.location_url || "",
             })
         }
@@ -144,6 +171,35 @@ export default function ConfiguracoesPage() {
         if (numbers.length <= 2) return numbers
         if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
         return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
+    }
+
+    const toggleHour = (dayKey: string, hour: string) => {
+        setFormData(prev => {
+            const currentHours = prev.horarios_funcionamento[dayKey] || []
+            const newHours = currentHours.includes(hour)
+                ? currentHours.filter(h => h !== hour)
+                : [...currentHours, hour].sort()
+
+            return {
+                ...prev,
+                horarios_funcionamento: {
+                    ...prev.horarios_funcionamento,
+                    [dayKey]: newHours
+                }
+            }
+        })
+    }
+
+    const copyToAllDays = (sourceDayKey: string) => {
+        const sourceHours = formData.horarios_funcionamento[sourceDayKey] || []
+        const newHorarios = { ...formData.horarios_funcionamento }
+
+        DAYS_OF_WEEK.forEach(day => {
+            newHorarios[day.key] = [...sourceHours]
+        })
+
+        setFormData(prev => ({ ...prev, horarios_funcionamento: newHorarios }))
+        addToast({ title: "Horários copiados para todos os dias!" })
     }
 
     return (
@@ -282,82 +338,86 @@ export default function ConfiguracoesPage() {
                         Horários de Funcionamento
                     </CardTitle>
                     <CardDescription>
-                        Selecione os horários em que você atende clientes
+                        Configure seus horários de atendimento para cada dia da semana.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <p className="text-sm text-muted-foreground">
-                        Clique nos horários para ativar/desativar. Apenas horários ativos aparecerão para suas clientes na página de agendamento.
-                    </p>
+                    <Tabs defaultValue="segunda" className="w-full">
+                        <TabsList className="w-full grid grid-cols-4 lg:grid-cols-7 mb-4 bg-white/50 dark:bg-zinc-900/50">
+                            {DAYS_OF_WEEK.map(day => (
+                                <TabsTrigger key={day.key} value={day.key} className="text-xs sm:text-sm">
+                                    {day.label.slice(0, 3)}
+                                </TabsTrigger>
+                            ))}
+                        </TabsList>
 
-                    {/* Grid de Horários */}
-                    <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-7 gap-2">
-                        {ALL_HOURS.map((hora) => {
-                            const isActive = formData.horarios_funcionamento.includes(hora)
-                            return (
-                                <button
-                                    key={hora}
-                                    type="button"
-                                    onClick={() => {
-                                        if (isActive) {
-                                            // Remover horário
-                                            setFormData({
-                                                ...formData,
-                                                horarios_funcionamento: formData.horarios_funcionamento.filter(h => h !== hora)
-                                            })
-                                        } else {
-                                            // Adicionar horário
-                                            setFormData({
-                                                ...formData,
-                                                horarios_funcionamento: [...formData.horarios_funcionamento, hora].sort()
-                                            })
-                                        }
-                                    }}
-                                    className={`
-                                        px-3 py-2 rounded-lg text-sm font-medium transition-all
-                                        ${isActive
-                                            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md'
-                                            : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                                        }
-                                    `}
-                                >
-                                    {hora}
-                                </button>
-                            )
-                        })}
-                    </div>
+                        {DAYS_OF_WEEK.map(day => (
+                            <TabsContent key={day.key} value={day.key} className="space-y-4">
+                                <div className="flex justify-between items-center bg-white/50 dark:bg-zinc-900/50 p-3 rounded-lg">
+                                    <h3 className="font-semibold">{day.label}</h3>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => copyToAllDays(day.key)}
+                                        className="text-xs"
+                                    >
+                                        Copiar para todos os dias
+                                    </Button>
+                                </div>
 
-                    {/* Contador */}
-                    <div className="flex items-center justify-between pt-2">
-                        <p className="text-sm text-muted-foreground">
-                            <span className="font-semibold text-amber-600">{formData.horarios_funcionamento.length}</span> horários selecionados
-                        </p>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setFormData({ ...formData, horarios_funcionamento: [] })}
-                            >
-                                Limpar
-                            </Button>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setFormData({ ...formData, horarios_funcionamento: [...ALL_HOURS] })}
-                            >
-                                Todos
-                            </Button>
-                        </div>
-                    </div>
+                                <div className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2">
+                                    {ALL_HOURS.map((hora) => {
+                                        const isActive = (formData.horarios_funcionamento[day.key] || []).includes(hora)
+                                        return (
+                                            <button
+                                                key={hora}
+                                                type="button"
+                                                onClick={() => toggleHour(day.key, hora)}
+                                                className={`
+                                                    px-2 py-2 rounded-lg text-sm font-medium transition-all
+                                                    ${isActive
+                                                        ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                                                        : 'bg-white dark:bg-zinc-800 text-zinc-400 border border-zinc-200 dark:border-zinc-700 hover:border-blue-400'
+                                                    }
+                                                `}
+                                            >
+                                                {hora}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                                <div className="flex justify-between items-center text-sm text-muted-foreground pt-2">
+                                    <span>
+                                        {(formData.horarios_funcionamento[day.key] || []).length} horários selecionados
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setFormData(prev => ({
+                                            ...prev,
+                                            horarios_funcionamento: {
+                                                ...prev.horarios_funcionamento,
+                                                [day.key]: []
+                                            }
+                                        }))}
+                                    >
+                                        Limpar dia
+                                    </Button>
+                                </div>
+                            </TabsContent>
+                        ))}
+                    </Tabs>
 
                     {/* Botão Salvar */}
-                    <Button
-                        size="lg"
-                        onClick={handleSave}
-                        className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
-                    >
-                        💾 Salvar Horários
-                    </Button>
+                    <div className="pt-4">
+                        <Button
+                            size="lg"
+                            onClick={handleSave}
+                            className="w-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white"
+                        >
+                            💾 Salvar Horários
+                        </Button>
+                    </div>
                 </CardContent>
             </Card >
 

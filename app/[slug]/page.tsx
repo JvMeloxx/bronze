@@ -41,7 +41,7 @@ interface StudioPublicConfig {
     payment_policy: string
     notifications_enabled: boolean
     owner_phone: string
-    horarios_funcionamento: string[] // Horários que o estúdio atende
+    horarios_funcionamento: string[] | Record<string, string[]> // Horários que o estúdio atende
     location_url?: string
     // Flag interna para saber se deve enviar msg
     send_to_owner: boolean
@@ -190,11 +190,29 @@ export default function AgendarPage() {
         setSelectedHorario("")
     }, [selectedDate, selectedTipo, studio, supabase])
 
-    // Horários disponíveis - usa os configurados pelo estúdio
-    const horarios = studio?.horarios_funcionamento || [
-        '08:00', '09:00', '10:00', '11:00', '12:00',
-        '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'
-    ]
+    // Calcular horários disponíveis com base no dia da semana
+    const getHorariosDisponiveis = () => {
+        if (!studio?.horarios_funcionamento) return []
+
+        // Se for array simples (legado), retorna ele mesmo
+        if (Array.isArray(studio.horarios_funcionamento)) {
+            return studio.horarios_funcionamento
+        }
+
+        // Se não tiver data selecionada, retorna vazio ou todos (opcional)
+        if (!selectedDate) return []
+
+        // Descobrir dia da semana: 0=Domingo, 1=Segunda...
+        const date = new Date(selectedDate + "T00:00:00")
+        const dayOfWeek = date.getDay()
+
+        const mapDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"]
+        const key = mapDays[dayOfWeek]
+
+        return studio.horarios_funcionamento[key] || []
+    }
+
+    const horarios = getHorariosDisponiveis()
 
     // Verificar se um horário está lotado
     const servicoSelecionadoObj = servicos.find(s => s.id === selectedTipo)
@@ -490,7 +508,7 @@ export default function AgendarPage() {
                                                         : "text-muted-foreground hover:text-foreground"
                                                         }`}
                                                 >
-                                                    ☀️ Previsão (14 dias)
+                                                    ☀️ Previsão (5 dias)
                                                 </button>
                                                 <button
                                                     onClick={() => setViewMode("calendar")}
@@ -505,7 +523,7 @@ export default function AgendarPage() {
                                         </div>
 
                                         {viewMode === "weather" ? (
-                                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                                                 {weather.slice(0, 14).map((day) => (
                                                     <button
                                                         key={day.date}
