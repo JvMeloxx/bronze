@@ -20,12 +20,14 @@ import { createClient } from "@/lib/supabase"
 import { Servico, Agendamento } from "@/lib/hooks-supabase"
 
 // Tipos auxiliares (reusados da página principal por enquanto, idealmente estariam num types.ts)
+
 interface StudioPublicConfig {
     id: string
     nome_estudio: string
     telefone: string
     notifications_enabled: boolean
     owner_phone: string
+    horarios_funcionamento: string[] | Record<string, string[]>
 }
 
 export default function RemarcarPage() {
@@ -41,6 +43,7 @@ export default function RemarcarPage() {
     // Dados do Agendamento Atual
     const [originalAgendamento, setOriginalAgendamento] = useState<Agendamento | null>(null)
     const [studio, setStudio] = useState<StudioPublicConfig | null>(null)
+    const [servicoDetalhes, setServicoDetalhes] = useState<Servico | null>(null)
 
     // Novo Agendamento State
     const [step, setStep] = useState(1)
@@ -48,12 +51,7 @@ export default function RemarcarPage() {
     const [loadingWeather, setLoadingWeather] = useState(true)
     const [selectedDate, setSelectedDate] = useState("")
     const [selectedHorario, setSelectedHorario] = useState("")
-
-    // Horários disponíveis (9h às 17h)
-    const horarios = [
-        "09:00", "09:30", "10:00", "10:30", "11:00", "11:30",
-        "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00"
-    ]
+    const [availability, setAvailability] = useState<string[]>([])
 
     const formatDate = (dateStr: string) => {
         if (!dateStr) return ""
@@ -72,7 +70,7 @@ export default function RemarcarPage() {
         async function loadData() {
             setLoading(true)
             try {
-                // Carregar Wetter
+                // Carregar Clima
                 const forecast = await getWeatherForecast()
                 setWeather(forecast)
                 setLoadingWeather(false)
@@ -95,12 +93,23 @@ export default function RemarcarPage() {
                 // Carregar Studio
                 const { data: studioData, error: studioError } = await supabase
                     .from("studios")
-                    .select("id, nome_estudio, telefone, notifications_enabled, owner_phone")
+                    .select("*") // Pegar tudo para ter horarios_funcionamento
                     .eq("id", agendamento.studio_id)
                     .single()
 
                 if (!studioError && studioData) {
                     setStudio(studioData)
+                }
+
+                // Carregar Serviço (se tiver ID)
+                if (agendamento.servico_id) {
+                    const { data: servicoData } = await supabase
+                        .from("servicos")
+                        .select("*")
+                        .eq("id", agendamento.servico_id)
+                        .single()
+
+                    if (servicoData) setServicoDetalhes(servicoData)
                 }
 
             } catch (err) {
@@ -116,6 +125,43 @@ export default function RemarcarPage() {
         }
     }, [id, supabase])
 
+    // Calcular horários disponíveis quando data/serviço/studio mudam
+    useEffect(() => {
+        if (!selectedDate || !studio) return
+
+        const getHorarios = () => {
+            // Descobrir dia da semana
+            const date = new Date(selectedDate + "T00:00:00")
+            const dayOfWeek = date.getDay()
+            const mapDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"]
+            const key = mapDays[dayOfWeek]
+
+            // 1. Verificar se o serviço tem horário específico
+            if (servicoDetalhes?.horarios && servicoDetalhes.horarios[key]) {
+                const horariosServico = servicoDetalhes.horarios[key]
+                if (Array.isArray(horariosServico)) {
+                    return horariosServico.sort()
+                }
+            }
+
+            // 2. Fallback: Horário geral do estúdio
+            if (studio.horarios_funcionamento) {
+                if (Array.isArray(studio.horarios_funcionamento)) {
+                    return studio.horarios_funcionamento
+                }
+                // Se for objeto
+                const horariosStudio = (studio.horarios_funcionamento as Record<string, string[]>)[key]
+                return horariosStudio || []
+            }
+
+            return []
+        }
+
+        const horariosDisponiveis = getHorarios()
+        setAvailability(horariosDisponiveis)
+        setSelectedHorario("") // Limpar seleção anterior
+
+    }, [selectedDate, studio, servicoDetalhes])
 
     const handleReschedule = async () => {
         if (!originalAgendamento || !studio || !selectedDate || !selectedHorario) return
@@ -167,7 +213,7 @@ export default function RemarcarPage() {
 
             // 3. Sucesso UI
             alert("Agendamento reagendado com sucesso!")
-            router.push("/") // Ou uma página de sucesso específica
+            router.push("/")
 
         } catch (err) {
             console.error("Erro ao reagendar:", err)
@@ -178,6 +224,28 @@ export default function RemarcarPage() {
     }
 
     const selectedWeather = weather.find(w => w.date === selectedDate)
+
+    // Preço Dinâmico
+    const getPrecoDisplay = () => {
+        if (!servicoDetalhes || !selectedDate) return null
+
+        let preco = servicoDetalhes.preco
+
+        // Verificar preço por dia
+        if (servicoDetalhes.precos_por_dia) {
+            const date = new Date(selectedDate + "T00:00:00")
+            const mapDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"]
+            const key = mapDays[date.getDay()]
+            if (servicoDetalhes.precos_por_dia[key]) {
+                preco = servicoDetalhes.precos_por_dia[key]
+            }
+        }
+
+        return preco
+    }
+
+    const precoAtual = getPrecoDisplay()
+    const diffPreco = precoAtual !== null && servicoDetalhes && precoAtual !== servicoDetalhes.preco
 
     if (loading) {
         return (
@@ -278,32 +346,47 @@ export default function RemarcarPage() {
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <h2 className="text-xl font-semibold mb-4">2. Escolha o Novo Horário</h2>
 
-                        {/* Weather Summary */}
-                        {selectedWeather && (
-                            <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 mb-6">
-                                <span className="text-3xl">{selectedWeather.icon}</span>
-                                <div>
-                                    <p className="font-medium">{formatDate(selectedDate)}</p>
+                        {/* Weather & Price Summary */}
+                        <div className="flex items-center gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 mb-6">
+                            <span className="text-3xl">{selectedWeather ? selectedWeather.icon : "📅"}</span>
+                            <div className="flex-1">
+                                <p className="font-medium">{formatDate(selectedDate)}</p>
+                                {selectedWeather && (
                                     <p className="text-sm text-muted-foreground">
                                         {selectedWeather.description} • {selectedWeather.tempMax}°C
                                     </p>
-                                </div>
+                                )}
                             </div>
-                        )}
+                            {precoAtual !== null && (
+                                <div className="text-right">
+                                    <p className="text-xs text-muted-foreground">Valor Estimado</p>
+                                    <p className="font-bold text-amber-600">R$ {precoAtual.toFixed(2).replace('.', ',')}</p>
+                                    {diffPreco && (
+                                        <p className="text-[10px] text-orange-600">Preço diferenciado!</p>
+                                    )}
+                                </div>
+                            )}
+                        </div>
 
                         <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
-                            {horarios.map((h) => (
-                                <button
-                                    key={h}
-                                    onClick={() => setSelectedHorario(h)}
-                                    className={`py-3 px-4 rounded-lg font-mono font-medium transition-all ${selectedHorario === h
-                                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
-                                        : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
-                                        }`}
-                                >
-                                    {h}
-                                </button>
-                            ))}
+                            {availability.length > 0 ? (
+                                availability.map((h) => (
+                                    <button
+                                        key={h}
+                                        onClick={() => setSelectedHorario(h)}
+                                        className={`py-3 px-4 rounded-lg font-mono font-medium transition-all ${selectedHorario === h
+                                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg"
+                                            : "bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 hover:border-amber-300"
+                                            }`}
+                                    >
+                                        {h}
+                                    </button>
+                                ))
+                            ) : (
+                                <div className="col-span-full text-center p-8 bg-gray-50 rounded-lg text-gray-500">
+                                    Não há horários disponíveis para esta data.
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex justify-between mt-8">
