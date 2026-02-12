@@ -32,7 +32,8 @@ function StatCardSkeleton() {
     )
 }
 
-import { WeatherWidget } from "@/components/ui/weather-widget" // Assuming I'll move it to ui or fix import path
+import { MarketingDialog } from "./components/marketing-dialog"
+import { WeatherWidget } from "@/components/ui/weather-widget"
 import { useAuth } from "@/lib/auth-context"
 
 // ... imports remain the same
@@ -61,15 +62,20 @@ export default function DashboardPage() {
                         Visão geral do seu studio de bronzeamento
                     </p>
                 </div>
-                {studio?.latitude && studio?.longitude && (
-                    <div className="w-full md:w-auto">
-                        <WeatherWidget
-                            latitude={studio.latitude}
-                            longitude={studio.longitude}
-                            establishmentName={studio.nome_estudio}
-                        />
-                    </div>
-                )}
+
+                <div className="flex flex-col-reverse md:flex-row items-center gap-4 w-full md:w-auto">
+                    <MarketingDialog />
+
+                    {studio?.latitude && studio?.longitude && (
+                        <div className="w-full md:w-auto">
+                            <WeatherWidget
+                                latitude={studio.latitude}
+                                longitude={studio.longitude}
+                                establishmentName={studio.nome_estudio}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Stats Cards */}
