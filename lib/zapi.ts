@@ -53,14 +53,19 @@ export function formatPhoneNumber(phone: string): string {
     // Remove tudo que não é número
     let cleaned = phone.replace(/\D/g, "")
 
-    // Se começar com 0, remove
+    // Se começar com 0, remove (ex: 0619...)
     if (cleaned.startsWith("0")) {
         cleaned = cleaned.substring(1)
     }
 
-    // Se não tiver código do país (55), adiciona
-    if (!cleaned.startsWith("55")) {
-        cleaned = "55" + cleaned
+    // Lógica para Internacionalização:
+    // Se tiver 12 dígitos ou mais (ex: 351xxxxxxxxx), assume que já tem DDI.
+    // Se tiver 11 ou menos (ex: 619xxxxxxxx ou 119xxxxxxxx), assume Brasil e adiciona 55.
+    if (cleaned.length <= 11) {
+        // Se já não começar com 55 (caso raro de alguém digitar 5561... mas com length curto), adiciona
+        if (!cleaned.startsWith("55")) {
+            cleaned = "55" + cleaned
+        }
     }
 
     return cleaned

@@ -118,44 +118,96 @@ export async function POST(request: Request) {
             const phone = message.phone
             if (!phone) return NextResponse.json({ status: "ignored_no_phone" })
 
-            // Verificar se cliente tem agendamento recente CONFIRMADO (últimas 24h)
+            const messageText = (message.text?.message || message.body || "").toLowerCase()
+
+            // Palavras-chave para confirmação
+            const confirmKeywords = ["sim", "confirm", "confirmo", "ok", "pode", "estarei"]
+            const isConfirmation = confirmKeywords.some(keyword => messageText.includes(keyword))
+
             // Lógica de Matching Robusta:
             // O Z-API manda ex: 5561992415188
             // O Banco pode ter: (61) 99241-5188
             // Vamos buscar pelos últimos 8 dígitos para garantir
-
             const cleanPhone = phone.replace(/\D/g, "")
             const last8 = cleanPhone.slice(-8)
 
-            // Buscar agendamento futuro confirmado deste telefone (busca flexível)
-            const { data: agendamentos } = await supabase
+            // 1. Se for confirmação, buscar agendamentos PENDENTES para confirmar
+            if (isConfirmation) {
+                const { data: agendamentosPendentes } = await supabase
+                    .from("agendamentos")
+                    .select("id, studio_id")
+                    .eq("status", "pendente")
+                    .gte("data", new Date().toISOString().split('T')[0]) // Agendamentos hoje ou futuro
+                    .ilike("telefone", `%${last8}`) // Busca pelos últimos 8 dígitos (flexível)
+                    .order("data", { ascending: true }) // O mais próximo primeiro
+                    .limit(1)
+
+                if (agendamentosPendentes && agendamentosPendentes.length > 0) {
+                    const agendamento = agendamentosPendentes[0]
+
+                    // Atualizar para CONFIRMADO
+                    await supabase
+                        .from("agendamentos")
+                        .update({ status: "confirmado" })
+                        .eq("id", agendamento.id)
+
+                    console.log(`Agendamento ${agendamento.id} confirmado via texto por ${phone}`)
+
+                    // Buscar card para enviar
+                    const { data: studio } = await supabase
+                        .from("studios")
+                        .select("card_url")
+                        .eq("id", agendamento.studio_id)
+                        .single()
+
+                    if (studio?.card_url) {
+                        await sendImageMessage({
+                            phone,
+                            image: studio.card_url,
+                            caption: "✨ Agendamento confirmado! Aqui está seu cartão de acesso."
+                        })
+                        return NextResponse.json({ status: "confirmed_and_card_sent" })
+                    }
+
+                    await sendTextMessage({ phone, message: "✅ Agendamento confirmado com sucesso!" })
+                    return NextResponse.json({ status: "confirmed" })
+                }
+            }
+
+            // 2. Se não confirmou pendente, verifica se cliente tem agendamento JÁ CONFIRMADO (para reenvio de card ou info)
+            // Útil caso a pessoa pergunte algo e já tenha confirmado antes
+            const { data: agendamentosConfirmados } = await supabase
                 .from("agendamentos")
                 .select("id, studio_id, data, telefone")
                 .eq("status", "confirmado")
-                .gte("data", new Date().toISOString().split('T')[0]) // Agendamentos hoje ou futuro
-                .ilike("telefone", `%${last8}`) // Busca pelos últimos 8 dígitos
+                .gte("data", new Date().toISOString().split('T')[0])
+                .ilike("telefone", `%${last8}`)
                 .order("created_at", { ascending: false })
-                .limit(5) // Pega alguns para garantir filtro correto no JS
+                .limit(1)
 
-            if (agendamentos && agendamentos.length > 0) {
-                const agendamento = agendamentos[0]
+            if (agendamentosConfirmados && agendamentosConfirmados.length > 0) {
+                // Lógica opcional: Se a pessoa mandar "Card" ou algo assim, reenvia. 
+                // Por enquanto, não vamos reenviar sempre para não ficar chato, a menos que seja explicitamente pedido ou na primeira confirmação.
+                // O código original reenviava o card. Vamos manter apenas se não tiver enviado recentemente (difícil saber sem log)
+                // VAMOS MANTER O COMPORTAMENTO ORIGINAL APENAS SE A MENSAGEM CONTIVER 'CARD' ou 'ENDEREÇO' ou 'LOCAL'
+                const infoKeywords = ["card", "cartão", "endereço", "local", "confirmado"]
+                if (infoKeywords.some(k => messageText.includes(k))) {
+                    const agendamento = agendamentosConfirmados[0]
+                    const { data: studio } = await supabase
+                        .from("studios")
+                        .select("card_url")
+                        .eq("id", agendamento.studio_id)
+                        .single()
 
-                // Buscar card do estúdio
-                const { data: studio } = await supabase
-                    .from("studios")
-                    .select("card_url")
-                    .eq("id", agendamento.studio_id)
-                    .single()
-
-                if (studio?.card_url) {
-                    // Enviar Card
-                    console.log(`Enviando card para ${phone} referente ao agendamento ${agendamento.id}`)
-                    await sendImageMessage({
-                        phone,
-                        image: studio.card_url,
-                        caption: "✨ Obrigado por confirmar! Aqui está seu cartão de acesso com todas as informações."
-                    })
-                    return NextResponse.json({ status: "card_sent" })
+                    if (studio?.card_url) {
+                        console.log(`Reenviando card para ${phone}`)
+                        await sendImageMessage({
+                            phone,
+                            image: studio.card_url,
+                            caption: "✨ Aqui está seu cartão de acesso."
+                        })
+                        return NextResponse.json({ status: "card_resent" })
+                    }
                 }
             }
         }
