@@ -81,6 +81,7 @@ export default function AgendarPage() {
     // Disponibilidade por horário: { "09:00": 2, "10:00": 0, ... }
     const [bookingsPerSlot, setBookingsPerSlot] = useState<Record<string, number>>({})
     const [loadingAvailability, setLoadingAvailability] = useState(false)
+    const [selectedAddons, setSelectedAddons] = useState<string[]>([])
 
     // ... (useEffect loadAll remains same) ...
     // NOTE: Re-inserting the useEffect hooks here is redundant if I can just target the state block
@@ -286,7 +287,18 @@ export default function AgendarPage() {
 
         try {
             const servicoSelecionado = servicos.find(s => s.id === selectedTipo)
-            const servicoNome = servicoSelecionado?.nome || "Serviço"
+            let servicoNome = servicoSelecionado?.nome || "Serviço"
+
+            // Append Addons to Service Name (or Observations)
+            const addonsNames = []
+            if (selectedAddons.includes('descoloracao')) addonsNames.push("Descoloração")
+            if (selectedAddons.includes('banho_lua')) addonsNames.push("Banho de Lua")
+
+            if (addonsNames.length > 0) {
+                // Adicionar aos detalhes para ficar visível
+                servicoNome += ` (+ ${addonsNames.join(' + ')})`
+            }
+
             const dataFormatada = formatDateBR(selectedDate)
             const telefoneLimpo = formData.telefone.replace(/\D/g, '')
 
@@ -417,6 +429,10 @@ export default function AgendarPage() {
                         preco = servicoSelecionado.precos_por_dia[key]
                     }
                 }
+                // Adicionar precos extras
+                if (selectedAddons.includes('descoloracao')) preco += 30
+                if (selectedAddons.includes('banho_lua')) preco += 80
+
                 return preco
             })()
 
@@ -851,6 +867,52 @@ export default function AgendarPage() {
                                     )}
                                 </div>
 
+                                {/* CROSS-SELL RENATA ALTO BRONZE */}
+                                {slug === 'renataaltobronze123' && selectedTipo && (
+                                    <div className="animate-in fade-in duration-300">
+                                        <Label className="text-lg mb-3 block flex items-center gap-2">
+                                            Turbine seu Bronze ✨
+                                            <Badge variant="outline" className="text-xs font-normal bg-amber-50 text-amber-600 border-amber-200">
+                                                Opcional
+                                            </Badge>
+                                        </Label>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {[
+                                                { id: 'descoloracao', nome: 'Descoloração', preco: 30 },
+                                                { id: 'banho_lua', nome: 'Banho de Lua Completo', preco: 80 }
+                                            ].map((addon) => {
+                                                const isSelected = selectedAddons.includes(addon.id)
+                                                return (
+                                                    <button
+                                                        key={addon.id}
+                                                        onClick={() => {
+                                                            if (isSelected) {
+                                                                setSelectedAddons(prev => prev.filter(id => id !== addon.id))
+                                                            } else {
+                                                                setSelectedAddons(prev => [...prev, addon.id])
+                                                            }
+                                                        }}
+                                                        className={`p-3 rounded-lg border text-left transition-all flex items-center justify-between ${isSelected
+                                                            ? "bg-amber-50 border-amber-500 ring-1 ring-amber-500"
+                                                            : "bg-white dark:bg-zinc-800 border-gray-200 dark:border-zinc-700 hover:border-amber-300"
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-center gap-2">
+                                                            <div className={`w-4 h-4 rounded border flex items-center justify-center ${isSelected ? "bg-amber-500 border-amber-500" : "border-gray-300"}`}>
+                                                                {isSelected && <span className="text-white text-[10px]">✓</span>}
+                                                            </div>
+                                                            <span className="font-medium text-sm">{addon.nome}</span>
+                                                        </div>
+                                                        <span className="font-bold text-sm text-amber-600">
+                                                            + R$ {addon.preco.toFixed(2).replace('.', ',')}
+                                                        </span>
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Time Slots */}
                                 <div>
                                     <Label className="text-lg mb-3 block">Horário</Label>
@@ -929,23 +991,45 @@ export default function AgendarPage() {
                                                 <p className="text-sm text-muted-foreground">
                                                     {servicos.find(s => s.id === selectedTipo)?.nome}
                                                 </p>
+                                                {/* Mostrar Adicionais no Resumo */}
+                                                {selectedAddons.length > 0 && (
+                                                    <div className="mt-1 flex flex-wrap gap-1">
+                                                        {selectedAddons.map(id => {
+                                                            const addon = id === 'descoloracao' ? { nome: 'Descoloração' } : { nome: 'Banho de Lua' }
+                                                            return (
+                                                                <Badge key={id} variant="secondary" className="text-[10px] bg-white/50">
+                                                                    + {addon.nome}
+                                                                </Badge>
+                                                            )
+                                                        })}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="text-right">
                                                 {(() => {
                                                     const s = servicos.find(s => s.id === selectedTipo)
-                                                    let preco = s?.preco || 0
+                                                    let precoBase = s?.preco || 0
                                                     if (s?.precos_por_dia && selectedDate) {
                                                         const date = new Date(selectedDate + "T00:00:00")
                                                         const mapDays = ["domingo", "segunda", "terca", "quarta", "quinta", "sexta", "sabado"]
                                                         const key = mapDays[date.getDay()]
                                                         if (s.precos_por_dia[key]) {
-                                                            preco = s.precos_por_dia[key]
+                                                            precoBase = s.precos_por_dia[key]
                                                         }
                                                     }
+
+                                                    // Somar Adicionais
+                                                    let precoTotal = precoBase
+                                                    if (selectedAddons.includes('descoloracao')) precoTotal += 30
+                                                    if (selectedAddons.includes('banho_lua')) precoTotal += 80
+
                                                     return (
                                                         <>
                                                             <p className="text-2xl font-bold font-mono text-amber-600">{selectedHorario}</p>
-                                                            <p className="text-sm font-medium">R$ {preco.toFixed(2).replace('.', ',')}</p>
+                                                            <p className="text-sm font-medium">R$ {precoTotal.toFixed(2).replace('.', ',')}</p>
+                                                            {selectedAddons.length > 0 && (
+                                                                <p className="text-[10px] text-muted-foreground">(com adicionais)</p>
+                                                            )}
                                                         </>
                                                     )
                                                 })()}
@@ -953,6 +1037,7 @@ export default function AgendarPage() {
                                         </div>
                                     </CardContent>
                                 </Card>
+
 
                                 {/* Form */}
                                 <div className="grid gap-4">
