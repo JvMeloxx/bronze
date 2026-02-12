@@ -24,6 +24,11 @@
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7"
   },
+  "overrides": {
+    "react-day-picker": {
+      "react": "$react"
+    }
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
