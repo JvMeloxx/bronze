@@ -441,7 +441,7 @@ export function useDashboardStatsDB() {
                     .lte("data", fimSemana.toISOString().split("T")[0]),
 
                 // 4. Faturamento (Precisa somar o preço)
-                // Otimização: Trazer apenas a coluna preço, não o objeto todo
+                // Correção: Garantir que trazemos o preço e filtrar corretamente por status realizado
                 supabase
                     .from("agendamentos")
                     .select("preco")
@@ -450,7 +450,14 @@ export function useDashboardStatsDB() {
                     .gte("data", primeiroDiaMesStr)
             ])
 
-            const faturamentoTotal = faturamentoRes.data?.reduce((acc: number, curr: { preco?: number }) => acc + (curr.preco || 0), 0) || 0
+            // Debug: Verificar se faturamentoRes trouxe dados
+            // console.log("Faturamento Raw:", faturamentoRes.data)
+
+            const faturamentoTotal = faturamentoRes.data?.reduce((acc: number, curr: any) => {
+                // Garantir conversão para número, caso venha string ou undefined
+                const valor = Number(curr.preco) || 0
+                return acc + valor
+            }, 0) || 0
 
             setStats({
                 agendamentosHoje: agendamentosHojeRes.data?.length || 0,
@@ -469,9 +476,33 @@ export function useDashboardStatsDB() {
     }, [studio, supabase])
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchStats()
-    }, [fetchStats])
+
+        // Realtime Subscription: Atualizar dashboard automaticamente se houver mudanças em agendamentos
+        // Isso corrige o problema do valor "não mudar" ao finalizar atendimento
+        if (!studio?.id) return
+
+        const channel = supabase
+            .channel('dashboard-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: '*', // Escutar INSERT, UPDATE, DELETE
+                    schema: 'public',
+                    table: 'agendamentos',
+                    filter: `studio_id=eq.${studio.id}`
+                },
+                () => {
+                    // console.log("Mudança detectada no realtime! Atualizando dashboard...")
+                    fetchStats()
+                }
+            )
+            .subscribe()
+
+        return () => {
+            supabase.removeChannel(channel)
+        }
+    }, [fetchStats, studio?.id, supabase])
 
     return { ...stats, isLoading, refetch: fetchStats }
 }

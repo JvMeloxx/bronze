@@ -224,7 +224,7 @@ Acesse o dashboard para mais detalhes.`,
     /**
      * Lembrete para cliente 1 dia antes com cuidados e alerta de clima
      */
-    lembretePreSessao: (clienteNome: string, horario: string) =>
+    lembretePreSessao: (clienteNome: string, horario: string, telefoneStudio: string) =>
         `☀️ *Olá ${clienteNome}!*
 
 Sua sessão de bronzeamento é *AMANHÃ* às *${horario}*!
@@ -239,7 +239,7 @@ Sua sessão de bronzeamento é *AMANHÃ* às *${horario}*!
 
 ⚠️ *ATENÇÃO:* Caso o clima esteja *CHUVOSO*, entre em contato imediatamente para reagendar! Bronzeamento natural com chuva pode comprometer o resultado.
 
-Qualquer dúvida, falar direto com o studio (61) 98402-9860
+Qualquer dúvida, falar direto com o studio ${telefoneStudio}
 
 Até amanhã! ✨`,
 
@@ -514,11 +514,12 @@ export async function enviarConfirmacaoReagendamentoCliente(
 export async function enviarLembretePreSessao(
     telefone: string,
     clienteNome: string,
-    horario: string
+    horario: string,
+    telefoneStudio: string
 ): Promise<ZAPIResponse> {
     return sendTextMessage({
         phone: telefone,
-        message: MessageTemplates.lembretePreSessao(clienteNome, horario)
+        message: MessageTemplates.lembretePreSessao(clienteNome, horario, telefoneStudio)
     })
 }
 

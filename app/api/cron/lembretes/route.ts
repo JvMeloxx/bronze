@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
         const tomorrowStr = tomorrow.toISOString().split("T")[0] // YYYY-MM-DD
 
         // Buscar agendamentos de amanhã que estão confirmados ou pendentes
+        // Buscar agendamentos de amanhã que estão confirmados ou pendentes
         const { data: agendamentos, error } = await supabaseAdmin
             .from("agendamentos")
             .select(`
@@ -35,7 +36,8 @@ export async function GET(request: NextRequest) {
                 status,
                 studio_id,
                 studios (
-                    notifications_enabled
+                    notifications_enabled,
+                    telefone
                 )
             `)
             .eq("data", tomorrowStr)
@@ -60,6 +62,7 @@ export async function GET(request: NextRequest) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const studioData = agendamento.studios as any
             const notificationsEnabled = studioData?.notifications_enabled ?? false
+            const studioTelefone = studioData?.telefone || "(61) 98402-9860" // Fallback para número padrão se não tiver
 
             // Só enviar se notificações estiverem habilitadas e tiver telefone
             if (notificationsEnabled && agendamento.telefone) {
@@ -67,7 +70,8 @@ export async function GET(request: NextRequest) {
                     const result = await enviarLembretePreSessao(
                         agendamento.telefone,
                         agendamento.cliente_nome,
-                        agendamento.horario
+                        agendamento.horario,
+                        studioTelefone
                     )
                     results.push({
                         id: agendamento.id,
