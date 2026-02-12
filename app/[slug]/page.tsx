@@ -868,7 +868,7 @@ export default function AgendarPage() {
                                 </div>
 
                                 {/* CROSS-SELL RENATA ALTO BRONZE */}
-                                {(slug === 'renataaltobronze123' || slug === 'espaco-renata-bronze') && selectedTipo && (
+                                {(slug === 'renataaltobronze123' || slug === 'espaco-renata-bronze' || slug === 'jv-bronze') && selectedTipo && (
                                     <div className="animate-in fade-in duration-300">
                                         <Label className="text-lg mb-3 block flex items-center gap-2">
                                             Turbine seu Bronze ✨
