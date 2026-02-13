@@ -66,6 +66,8 @@ export interface Studio {
     horarios_funcionamento: Record<string, string[]> | string[]
     location_url?: string
     card_url?: string
+    capacidade_natural?: number
+    capacidade_artificial?: number
 }
 
 // Hook para gerenciar Clientes

@@ -67,6 +67,8 @@ export default function ConfiguracoesPage() {
         horarios_funcionamento: {} as Record<string, string[]>, // Agora é um objeto
         location_url: "",
         card_url: "",
+        capacidade_natural: 10,
+        capacidade_artificial: 5,
     })
 
     // Populate form data when config is loaded
@@ -101,6 +103,8 @@ export default function ConfiguracoesPage() {
                 horarios_funcionamento: horarios,
                 location_url: config.location_url || "",
                 card_url: config.card_url || "",
+                capacidade_natural: config.capacidade_natural || 10,
+                capacidade_artificial: config.capacidade_artificial || 5,
             })
         }
     }, [config])
@@ -121,7 +125,9 @@ export default function ConfiguracoesPage() {
             slug: formData.slug,
             horarios_funcionamento: formData.horarios_funcionamento,
             location_url: formData.location_url,
-            card_url: formData.card_url
+            card_url: formData.card_url,
+            capacidade_natural: formData.capacidade_natural,
+            capacidade_artificial: formData.capacidade_artificial
         })
 
         if (success) {
@@ -443,6 +449,66 @@ export default function ConfiguracoesPage() {
                             </div>
                         )}
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* Card Capacidade do Studio */}
+            <Card className="border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-fuchsia-50 dark:from-purple-900/20 dark:to-fuchsia-900/20">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <span className="text-2xl">👥</span>
+                        Capacidade do Studio
+                    </CardTitle>
+                    <CardDescription>
+                        Defina quantas pessoas você consegue atender SIMULTANEAMENTE em cada modalidade.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Capacidade Natural */}
+                        <div className="space-y-2">
+                            <Label htmlFor="capacidadeNatural">☀️ Bronze Natural (Sol)</Label>
+                            <Input
+                                id="capacidadeNatural"
+                                type="number"
+                                value={formData.capacidade_natural}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, capacidade_natural: Number(e.target.value) })
+                                }
+                                placeholder="10"
+                                className="border-purple-200 dark:border-purple-800"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Total de macas/cadeiras disponíveis no sol.
+                            </p>
+                        </div>
+
+                        {/* Capacidade Artificial */}
+                        <div className="space-y-2">
+                            <Label htmlFor="capacidadeArtificial">💡 Bronze Artificial (Máquina)</Label>
+                            <Input
+                                id="capacidadeArtificial"
+                                type="number"
+                                value={formData.capacidade_artificial}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, capacidade_artificial: Number(e.target.value) })
+                                }
+                                placeholder="5"
+                                className="border-purple-200 dark:border-purple-800"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Total de cabines de bronzeamento disponíveis.
+                            </p>
+                        </div>
+                    </div>
+
+                    <Button
+                        size="lg"
+                        onClick={handleSave}
+                        className="w-full bg-gradient-to-r from-purple-500 to-fuchsia-500 hover:from-purple-600 hover:to-fuchsia-600 text-white"
+                    >
+                        💾 Salvar Capacidades
+                    </Button>
                 </CardContent>
             </Card>
 

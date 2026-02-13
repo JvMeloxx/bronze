@@ -26,6 +26,8 @@ interface Studio {
     card_url?: string
     latitude?: number
     longitude?: number
+    capacidade_natural?: number
+    capacidade_artificial?: number
 }
 
 interface AuthContextType {

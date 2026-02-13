@@ -27,6 +27,7 @@ export function MarketingDialog() {
     const { addToast } = useToast()
     const [open, setOpen] = useState(false)
     const [step, setStep] = useState(1)
+    const [selectedCategory, setSelectedCategory] = useState<"all" | "natural" | "artificial">("all")
 
     // Date Selection
     const [dateRange, setDateRange] = useState<{ from: Date; to: Date } | undefined>({
@@ -44,11 +45,16 @@ export function MarketingDialog() {
         setIsGenerating(true)
         try {
             const endDate = dateRange.to || dateRange.from
-            const results = await getAvailabilityForRange(studio.id, dateRange.from, endDate)
+            const results = await getAvailabilityForRange(studio.id, dateRange.from, endDate, selectedCategory)
 
             // Format Text
             const lines = []
-            lines.push(`✨ *HORÁRIOS DISPONÍVEIS* ✨`)
+
+            let title = "✨ *HORÁRIOS DISPONÍVEIS* ✨"
+            if (selectedCategory === 'natural') title = "☀️ *HORÁRIOS BRONZE NATURAL* ☀️"
+            if (selectedCategory === 'artificial') title = "💡 *HORÁRIOS BRONZE ARTIFICIAL* 💡"
+
+            lines.push(title)
             lines.push("")
 
             if (results.length === 0) {
@@ -120,6 +126,33 @@ export function MarketingDialog() {
 
                 {step === 1 ? (
                     <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Categoria</Label>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant={selectedCategory === "all" ? "default" : "outline"}
+                                    onClick={() => setSelectedCategory("all")}
+                                    className="flex-1"
+                                >
+                                    Todos
+                                </Button>
+                                <Button
+                                    variant={selectedCategory === "natural" ? "default" : "outline"}
+                                    onClick={() => setSelectedCategory("natural")}
+                                    className="flex-1"
+                                >
+                                    ☀️ Natural
+                                </Button>
+                                <Button
+                                    variant={selectedCategory === "artificial" ? "default" : "outline"}
+                                    onClick={() => setSelectedCategory("artificial")}
+                                    className="flex-1"
+                                >
+                                    💡 Artificial
+                                </Button>
+                            </div>
+                        </div>
+
                         <div className="space-y-2">
                             <Label>Selecione o período</Label>
                             <div className="border rounded-md p-4 flex justify-center">

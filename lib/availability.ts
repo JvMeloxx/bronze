@@ -14,14 +14,15 @@ interface AvailabilityResult {
 export async function getAvailabilityForRange(
     studioId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    category?: "natural" | "artificial" | "all" // Novo parâmetro opcional
 ): Promise<AvailabilityResult[]> {
     const supabase = createClient()
 
-    // 1. Fetch Studio Settings (Hours)
+    // 1. Fetch Studio Settings (Hours & Capacity)
     const { data: studio, error: studioError } = await supabase
         .from("studios")
-        .select("horarios_funcionamento")
+        .select("horarios_funcionamento, capacidade_natural, capacidade_artificial")
         .eq("id", studioId)
         .single()
 
@@ -30,10 +31,13 @@ export async function getAvailabilityForRange(
         return []
     }
 
-    // 2. Fetch Active Services (to determine Max Capacity)
+    const capNatural = studio.capacidade_natural || 10
+    const capArtificial = studio.capacidade_artificial || 5
+
+    // 2. Fetch Active Services (to determine categories)
     const { data: servicos, error: servicosError } = await supabase
         .from("servicos")
-        .select("capacidade")
+        .select("id, capacidade, categoria")
         .eq("studio_id", studioId)
         .eq("ativo", true)
 
@@ -42,9 +46,12 @@ export async function getAvailabilityForRange(
         return []
     }
 
-    // Determine max capacity of the studio (highest capacity among usage)
-    // Default to 1 if no services found
-    const maxCapacity = servicos?.reduce((max: number, s: any) => Math.max(max, s.capacidade || 1), 0) || 1
+    // Map service ID to category
+    // @ts-ignore
+    const serviceMap = new Map<string, "natural" | "artificial">(
+        // @ts-ignore
+        servicos?.map(s => [s.id, s.categoria])
+    )
 
     // 3. Fetch Bookings in Range
     const startStr = format(startDate, "yyyy-MM-dd")
@@ -52,7 +59,7 @@ export async function getAvailabilityForRange(
 
     const { data: bookings, error: bookingsError } = await supabase
         .from("agendamentos")
-        .select("data, horario")
+        .select("data, horario, servico_id")
         .eq("studio_id", studioId)
         .gte("data", startStr)
         .lte("data", endStr)
@@ -76,15 +83,11 @@ export async function getAvailabilityForRange(
         let slotsForDay: string[] = []
 
         // Handle different formats of horarios_funcionamento
-        // It can be an array ["08:00", "09:00"] (legacy) or object { "segunda": [...], "terca": [...], ... }
         const horarios = studio.horarios_funcionamento
 
         if (Array.isArray(horarios)) {
-            // Legacy format: same hours every day? Or maybe invalid. 
-            // Usually legacy was just list of strings. Let's assume valid.
             slotsForDay = horarios
         } else if (typeof horarios === 'object' && horarios !== null) {
-            // Object format
             // @ts-ignore
             slotsForDay = (horarios as Record<string, string[]>)[weekDay] || []
         }
@@ -92,12 +95,38 @@ export async function getAvailabilityForRange(
         if (slotsForDay.length > 0) {
             // Calculate availability for each slot
             const daySlots = slotsForDay.map(time => {
-                // Count bookings for this date and time
-                const count = bookings?.filter((b: any) => b.data === dateStr && b.horario === time).length || 0
-                const available = Math.max(0, maxCapacity - count)
+                // Bookings for this slot
+                // @ts-ignore
+                const slotBookings = bookings?.filter(b => b.data === dateStr && b.horario === time) || []
+
+                // Count usage by category
+                let usedNatural = 0
+                let usedArtificial = 0
+
+                slotBookings.forEach((b: any) => {
+                    const cat = serviceMap.get(b.servico_id)
+                    // Se não tiver categoria, assume natural
+                    if (cat === 'artificial') usedArtificial++
+                    else usedNatural++
+                })
+
+                const availNatural = Math.max(0, capNatural - usedNatural)
+                const availArtificial = Math.max(0, capArtificial - usedArtificial)
+
+                // Determine Total Available based on Filter
+                let available = 0
+
+                if (category === 'natural') {
+                    available = availNatural
+                } else if (category === 'artificial') {
+                    available = availArtificial
+                } else {
+                    // "all" ou undefined -> Soma os dois (Comportamento original)
+                    available = availNatural + availArtificial
+                }
 
                 return { time, available }
-            }).filter((s: { available: number }) => s.available > 0) // Only return available slots
+            }).filter(s => s.available > 0)
 
             if (daySlots.length > 0) {
                 results.push({
