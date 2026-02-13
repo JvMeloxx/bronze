@@ -247,7 +247,7 @@ export default function AgendamentosPage() {
 
             const result = tipo === "lembrete"
                 ? await enviarLembreteAgendamento(telefone, nome, dataFormatada, agendamento.horario, agendamento.servico_nome)
-                : await enviarConfirmacaoAgendamento(telefone, nome, dataFormatada, agendamento.horario, agendamento.servico_nome, agendamento.id, config?.slug || "", config?.telefone || "", config?.nome_estudio || "Studio")
+                : await enviarConfirmacaoAgendamento(telefone, nome, dataFormatada, agendamento.horario, agendamento.servico_nome, agendamento.id, config?.slug || "", config?.telefone || "", config?.nome_estudio || "Studio", config?.location_url)
 
             if (result.success) {
                 addToast({
