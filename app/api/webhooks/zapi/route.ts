@@ -70,7 +70,7 @@ export async function POST(request: Request) {
                     // Buscar studio_id do agendamento
                     const { data: agendamento } = await supabase
                         .from("agendamentos")
-                        .select("studio_id")
+                        .select("studio_id, telefone") // Fetch client phone
                         .eq("id", agendamentoId)
                         .single()
 
@@ -82,10 +82,14 @@ export async function POST(request: Request) {
                             .single()
 
                         if (studio?.card_url) {
+                            // Send to Client (agendamento.telefone) instead of Owner (phone)
+                            // Clean phone number just in case
+                            const clientPhone = agendamento.telefone.replace(/\D/g, "")
+
                             await sendImageMessage({
-                                phone,
+                                phone: clientPhone,
                                 image: studio.card_url,
-                                caption: "✨ Aqui está seu cartão de confirmação!"
+                                caption: "✨ Agendamento confirmado! Aqui está algumas sugestões do que levar para sua sessão."
                             })
                         }
                     }
@@ -164,7 +168,7 @@ export async function POST(request: Request) {
                         await sendImageMessage({
                             phone,
                             image: studio.card_url,
-                            caption: "✨ Agendamento confirmado! Aqui está seu cartão de acesso."
+                            caption: "✨ Agendamento confirmado! Aqui está algumas sugestões do que levar para sua sessão."
                         })
                         return NextResponse.json({ status: "confirmed_and_card_sent" })
                     }
