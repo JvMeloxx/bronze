@@ -1,10 +1,8 @@
 /**
- * Serviço de integração com Tomorrow.io API
- * API paga de previsão do tempo (com plano free)
- * https://www.tomorrow.io/
+ * Serviço de integração com Open-Meteo API
+ * API gratuita de previsão do tempo (sem chave)
+ * https://open-meteo.com/
  */
-
-const TOMORROW_API_KEY = "r09SCjrykgMo9o7J208eAC7qjmomBDoe"
 
 // Tipos para dados do clima
 export interface WeatherDay {
@@ -19,33 +17,37 @@ export interface WeatherDay {
     isSunny: boolean
 }
 
-// Mapeamento de códigos Tomorrow.io para descrições e ícones
-// https://docs.tomorrow.io/reference/data-layers-weather-codes
+// Mapeamento de códigos WMO (Open-Meteo) para descrições e ícones
+// https://open-meteo.com/en/docs
 const weatherCodeMap: Record<number, { description: string; icon: string; isSunny: boolean }> = {
-    0: { description: "Desconhecido", icon: "❓", isSunny: false },
-    1000: { description: "Céu Limpo", icon: "☀️", isSunny: true },
-    1100: { description: "Predominantemente Limpo", icon: "🌤️", isSunny: true },
-    1101: { description: "Parcialmente Nublado", icon: "⛅", isSunny: true },
-    1102: { description: "Nublado", icon: "☁️", isSunny: false },
-    1001: { description: "Nublado", icon: "☁️", isSunny: false },
-    2000: { description: "Nevoeiro", icon: "🌫️", isSunny: false },
-    2100: { description: "Nevoeiro Leve", icon: "🌫️", isSunny: false },
-    4000: { description: "Garoa", icon: "🌦️", isSunny: false },
-    4001: { description: "Chuva", icon: "🌧️", isSunny: false },
-    4200: { description: "Chuva Leve", icon: "🌧️", isSunny: false },
-    4201: { description: "Chuva Pesada", icon: "🌧️", isSunny: false },
-    5000: { description: "Neve", icon: "🌨️", isSunny: false },
-    5001: { description: "Neve Leve", icon: "🌨️", isSunny: false },
-    5100: { description: "Neve Pesada", icon: "🌨️", isSunny: false },
-    5101: { description: "Neve Pesada", icon: "🌨️", isSunny: false },
-    6000: { description: "Chuva Congelante", icon: "🌧️", isSunny: false },
-    6001: { description: "Chuva Congelante", icon: "🌧️", isSunny: false },
-    6200: { description: "Chuva Congelante Leve", icon: "🌧️", isSunny: false },
-    6201: { description: "Chuva Congelante Pesada", icon: "🌧️", isSunny: false },
-    7000: { description: "Granizo", icon: "🌨️", isSunny: false },
-    7101: { description: "Granizo Pesado", icon: "🌨️", isSunny: false },
-    7102: { description: "Granizo", icon: "🌨️", isSunny: false },
-    8000: { description: "Tempestade", icon: "⛈️", isSunny: false },
+    0: { description: "Céu Limpo", icon: "☀️", isSunny: true },
+    1: { description: "Predominantemente Limpo", icon: "🌤️", isSunny: true },
+    2: { description: "Parcialmente Nublado", icon: "⛅", isSunny: true },
+    3: { description: "Nublado", icon: "☁️", isSunny: false },
+    45: { description: "Nevoeiro", icon: "🌫️", isSunny: false },
+    48: { description: "Nevoeiro com Geada", icon: "🌫️", isSunny: false },
+    51: { description: "Garoa Leve", icon: "🌦️", isSunny: false },
+    53: { description: "Garoa Moderada", icon: "🌦️", isSunny: false },
+    55: { description: "Garoa Densa", icon: "🌦️", isSunny: false },
+    56: { description: "Garoa Congelante Leve", icon: "🌧️", isSunny: false },
+    57: { description: "Garoa Congelante Densa", icon: "🌧️", isSunny: false },
+    61: { description: "Chuva Leve", icon: "🌧️", isSunny: false },
+    63: { description: "Chuva Moderada", icon: "🌧️", isSunny: false },
+    65: { description: "Chuva Forte", icon: "🌧️", isSunny: false },
+    66: { description: "Chuva Congelante Leve", icon: "🌧️", isSunny: false },
+    67: { description: "Chuva Congelante Forte", icon: "🌧️", isSunny: false },
+    71: { description: "Neve Leve", icon: "🌨️", isSunny: false },
+    73: { description: "Neve Moderada", icon: "🌨️", isSunny: false },
+    75: { description: "Neve Forte", icon: "🌨️", isSunny: false },
+    77: { description: "Grãos de Neve", icon: "🌨️", isSunny: false },
+    80: { description: "Pancadas de Chuva Leves", icon: "🌦️", isSunny: false },
+    81: { description: "Pancadas de Chuva Moderadas", icon: "🌦️", isSunny: false },
+    82: { description: "Pancadas de Chuva Violentas", icon: "⛈️", isSunny: false },
+    85: { description: "Pancadas de Neve Leves", icon: "🌨️", isSunny: false },
+    86: { description: "Pancadas de Neve Fortes", icon: "🌨️", isSunny: false },
+    95: { description: "Tempestade", icon: "⛈️", isSunny: false },
+    96: { description: "Tempestade com Granizo Leve", icon: "⛈️", isSunny: false },
+    99: { description: "Tempestade com Granizo Forte", icon: "⛈️", isSunny: false },
 }
 
 // Função para obter detalhes do código do tempo
@@ -53,29 +55,20 @@ function getWeatherDetails(code: number): { description: string; icon: string; i
     return weatherCodeMap[code] || { description: "Indisponível", icon: "❓", isSunny: false }
 }
 
-// Interface da resposta da API Tomorrow.io
-interface TomorrowIoResponse {
-    data: {
-        timelines: Array<{
-            timestep: string
-            endTime: string
-            startTime: string
-            intervals: Array<{
-                startTime: string
-                values: {
-                    weatherCode: number
-                    temperatureMax: number
-                    temperatureMin: number
-                    precipitationProbability: number
-                    uvIndex: number
-                }
-            }>
-        }>
+// Interface da resposta da API Open-Meteo
+interface OpenMeteoResponse {
+    daily: {
+        time: string[]
+        weather_code: number[]
+        temperature_2m_max: number[]
+        temperature_2m_min: number[]
+        precipitation_probability_max: number[]
+        uv_index_max: number[]
     }
 }
 
 // Cache de 2 horas para previsão do tempo
-const WEATHER_CACHE_KEY = 'sunsync_weather_cache_tomorrow_v1'
+const WEATHER_CACHE_KEY = 'sunsync_weather_cache_openmeteo_v1'
 const WEATHER_CACHE_TTL = 2 * 60 * 60 * 1000 // 2 horas em ms
 
 interface WeatherCache {
@@ -113,19 +106,18 @@ function getMockWeather(): WeatherDay[] {
     const mockWeather: WeatherDay[] = []
     const today = new Date()
 
-    // Gerar 14 dias
-    for (let i = 0; i < 14; i++) {
+    // Gerar 7 dias
+    for (let i = 0; i < 7; i++) {
         const date = new Date(today)
         date.setDate(today.getDate() + i)
         const dateStr = date.toISOString().split('T')[0]
 
         // Alternar entre dias de sol e nublado para parecer real
-        // Dias 0, 1, 3, 4, 6, 7, 8... são sol
-        const isSunny = [0, 1, 3, 4, 6, 7, 8, 10, 11, 13].includes(i)
+        const isSunny = [0, 1, 3, 4, 6].includes(i)
 
         mockWeather.push({
             date: dateStr,
-            weatherCode: isSunny ? 1000 : 1001, // 1000 = Limpo, 1001 = Nublado
+            weatherCode: isSunny ? 0 : 3, // 0 = Limpo, 3 = Nublado
             tempMax: isSunny ? 28 + Math.floor(Math.random() * 5) : 22 + Math.floor(Math.random() * 3),
             tempMin: isSunny ? 18 + Math.floor(Math.random() * 3) : 16 + Math.floor(Math.random() * 2),
             precipitation: isSunny ? 0 : 40 + Math.floor(Math.random() * 40),
@@ -140,47 +132,46 @@ function getMockWeather(): WeatherDay[] {
 }
 
 /**
- * Busca previsão do tempo para os próximos 5 dias (com cache de 2h) usando Tomorrow.io
+ * Busca previsão do tempo para os próximos 7 dias (com cache de 2h) usando Open-Meteo
  * @param lat Latitude (padrão: São Paulo)
  * @param lng Longitude (padrão: São Paulo)
  */
 export async function getWeatherForecast(lat: number = -23.55, lng: number = -46.63): Promise<WeatherDay[]> {
-    const cacheKey = `${lat},${lng}`
+    const cacheKey = `${lat},${lng},7days`
 
     // Tentar cache primeiro
     const cached = getWeatherCache(cacheKey)
     if (cached) return cached
 
     try {
-        // Tomorrow.io Free Tier limitation: 1d timestep for max 15 days, generic endpoint
-        const url = `https://api.tomorrow.io/v4/timelines?location=${lat},${lng}&fields=weatherCode,temperatureMax,temperatureMin,precipitationProbability,uvIndex&timesteps=1d&units=metric&apikey=${TOMORROW_API_KEY}`
+        // Open-Meteo API: forecast_days=7
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,uv_index_max&timezone=America%2FSao_Paulo&forecast_days=7`
 
         const response = await fetch(url)
 
         if (!response.ok) {
-            console.warn(`Tomorrow.io API falhou (${response.status}). Usando dados simulados para a Demo.`)
-            throw new Error('Falha ao buscar previsão do tempo (Tomorrow.io)')
+            console.warn(`Open-Meteo API falhou (${response.status}). Usando dados simulados.`)
+            throw new Error('Falha ao buscar previsão do tempo (Open-Meteo)')
         }
 
-        const data: TomorrowIoResponse = await response.json()
-        const timeline = data.data.timelines[0]
+        const data: OpenMeteoResponse = await response.json()
+        const daily = data.daily
 
-        if (!timeline || !timeline.intervals) {
+        if (!daily || !daily.time) {
             return getMockWeather()
         }
 
-        const forecast: WeatherDay[] = timeline.intervals.map((interval) => {
-            const code = interval.values.weatherCode || 0
+        const forecast: WeatherDay[] = daily.time.map((time, index) => {
+            const code = daily.weather_code[index]
             const weatherDetails = getWeatherDetails(code)
-            const date = interval.startTime.split('T')[0]
 
             return {
-                date,
+                date: time,
                 weatherCode: code,
-                tempMax: Math.round(interval.values.temperatureMax),
-                tempMin: Math.round(interval.values.temperatureMin),
-                precipitation: interval.values.precipitationProbability, // Tomorrow.io retorna probabilidade % ou intensidade? probability pedido nos fields.
-                uvIndex: Math.round(interval.values.uvIndex || 0),
+                tempMax: Math.round(daily.temperature_2m_max[index]),
+                tempMin: Math.round(daily.temperature_2m_min[index]),
+                precipitation: daily.precipitation_probability_max[index] || 0,
+                uvIndex: Math.round(daily.uv_index_max[index] || 0),
                 description: weatherDetails.description,
                 icon: weatherDetails.icon,
                 isSunny: weatherDetails.isSunny,
@@ -193,9 +184,8 @@ export async function getWeatherForecast(lat: number = -23.55, lng: number = -46
         return forecast
     } catch (error) {
         console.error('Erro ao buscar previsão do tempo:', error)
-        // Fallback robusto para a Demo não quebrar
         const mockData = getMockWeather()
-        setWeatherCache(cacheKey, mockData) // Cachear o mock também para evitar re-tentativas constantes
+        setWeatherCache(cacheKey, mockData)
         return mockData
     }
 }
